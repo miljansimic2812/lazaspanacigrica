@@ -1,0 +1,1658 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laza Spanac</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: ceo ekran je noćni seoski put u perspektivi; HUD lebdi gore, meniji su karte preko scene */
+:root{
+  --noc:#170d2b;
+  --noc-2:#26144a;
+  --zlato:#f4b73b;
+  --crvena:#d92b3f;
+  --ruza:#ff5ea8;
+  --krem:#fff2da;
+  --magla:#c4b4e4;
+  --f-naslov:"Bungee","Rubik",system-ui,sans-serif;
+  --f-tekst:"Rubik",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html{height:100%;box-sizing:border-box;background:var(--noc)}
+*,*::before,*::after{box-sizing:inherit}
+body{height:100%;margin:0;overflow:hidden;background:var(--noc);color:var(--krem);font-family:var(--f-tekst);font-size:15px;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#scena{position:relative;width:100%;height:100%;overflow:hidden;touch-action:none}
+#igra{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* HUD */
+.hud{position:absolute;top:0;left:0;right:0;z-index:2;display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px 16px;padding-top:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.hud-levo{min-width:0}
+.poeni{display:flex;align-items:center;gap:8px;font-family:var(--f-naslov);font-size:clamp(22px,4.2vw,32px);color:var(--zlato);text-shadow:2px 2px 0 var(--crvena);font-variant-numeric:tabular-nums;line-height:1}
+.mnozilac{font-family:var(--f-tekst);font-weight:800;font-size:13px;padding:3px 8px;border-radius:999px;background:rgba(255,242,218,.12);color:var(--krem);text-shadow:none}
+.mnozilac.vruce{background:var(--crvena)}
+.metri{margin-top:5px;font-size:13px;color:var(--magla);font-variant-numeric:tabular-nums}
+.ruta{flex:1 1 260px;max-width:480px;margin-inline:auto;min-width:0;padding:8px 12px 11px;border-radius:12px;background:rgba(23,13,43,.6)}
+.ruta-tekst{display:flex;gap:6px;align-items:baseline;font-size:13px;white-space:nowrap;overflow:hidden}
+.ruta-tekst b{font-weight:700}
+.ruta-tekst .sled{color:var(--zlato);font-weight:700;overflow:hidden;text-overflow:ellipsis}
+.ruta-tekst .dalj{margin-left:auto;color:var(--magla);font-variant-numeric:tabular-nums}
+.ruta-traka{position:relative;height:6px;margin-top:9px;border-radius:3px;background:rgba(255,242,218,.14)}
+.ruta-puni{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:3px;background:linear-gradient(90deg,var(--crvena),var(--zlato))}
+.ruta-puni::after{content:"";position:absolute;right:-6px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;background:var(--zlato);box-shadow:0 0 0 3px rgba(244,183,59,.3)}
+.tacka{position:absolute;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--noc-2);border:2px solid rgba(255,242,218,.5)}
+.tacka.prosla{background:var(--zlato);border-color:var(--zlato)}
+.hud-desno{display:flex;gap:8px;margin-left:auto}
+.ikona{pointer-events:auto;width:42px;height:42px;display:grid;place-items:center;padding:0;border-radius:50%;border:1px solid rgba(255,242,218,.25);background:rgba(23,13,43,.65);color:var(--krem);cursor:pointer}
+.ikona:hover{background:rgba(60,30,100,.85)}
+.ikona .crta{display:none}
+.ikona.ugaseno .talas{display:none}
+.ikona.ugaseno .crta{display:inline}
+.ikona:focus-visible,.dugme:focus-visible,.strelica:focus-visible{outline:3px solid var(--krem);outline-offset:2px}
+@media (max-width:620px){.ruta{order:3;flex-basis:100%;max-width:none}}
+
+/* Dugmad za telefon */
+.strelice{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;justify-content:space-between;padding-bottom:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+.strelica{pointer-events:auto;width:76px;height:76px;border-radius:50%;border:2px solid rgba(255,242,218,.35);background:rgba(23,13,43,.45);color:var(--krem);display:grid;place-items:center;padding:0;cursor:pointer;touch-action:none}
+.strelica:active{background:rgba(244,183,59,.35)}
+@media (hover:hover) and (pointer:fine){.strelice{display:none}}
+
+/* Baner za nove stanice */
+.poruka{position:absolute;left:0;right:0;top:26%;z-index:2;text-align:center;pointer-events:none;opacity:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.poruka.prikazi{animation:baner 2.6s ease-out forwards}
+.poruka small{display:block;margin-bottom:6px;font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--magla)}
+.poruka strong{display:block;font-family:var(--f-naslov);font-weight:400;font-size:clamp(26px,6vw,52px);line-height:1.05;color:var(--zlato);text-shadow:3px 3px 0 var(--crvena),0 0 24px rgba(244,183,59,.45);text-wrap:balance}
+.poruka.ljubav strong{color:var(--ruza);text-shadow:3px 3px 0 #6d1440,0 0 28px rgba(255,94,168,.6)}
+@keyframes baner{0%{opacity:0;transform:translateY(14px) scale(.96)}12%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0;transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){.poruka.prikazi{animation:banerMirno 2.6s linear forwards}@keyframes banerMirno{0%,85%{opacity:1}100%{opacity:0}}}
+
+/* Meniji */
+.meni{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;overflow-y:auto;touch-action:pan-y;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:radial-gradient(120% 90% at 50% 40%,rgba(14,7,30,.2),rgba(14,7,30,.78))}
+.karta{margin:auto;width:min(580px,100%);position:relative;display:flex;flex-direction:column;gap:16px;padding:30px 24px 22px;border-radius:20px;background:rgba(27,14,52,.92);border:1px solid rgba(244,183,59,.3);box-shadow:0 24px 70px rgba(0,0,0,.55);overflow:hidden}
+.karta.mala{width:min(400px,100%)}
+.karta::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12'%3E%3Crect width='24' height='12' fill='%23d92b3f'/%3E%3Cpath d='M0 6L6 0L12 6L6 12ZM12 6L18 0L24 6L18 12Z' fill='%23f4b73b'/%3E%3Cpath d='M6 3L9 6L6 9L3 6ZM18 3L21 6L18 9L15 6Z' fill='%23170d2b'/%3E%3C/svg%3E") repeat-x;background-size:24px 12px}
+.obrva{font-weight:700;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--magla)}
+.obrva.ruzicasta{color:var(--ruza)}
+.karta h1,.karta h2{margin:4px 0 0;font-family:var(--f-naslov);font-weight:400;line-height:.98;color:var(--zlato);text-shadow:3px 3px 0 var(--crvena),6px 6px 0 rgba(0,0,0,.3);text-wrap:balance}
+.karta h1{font-size:clamp(38px,10vw,64px)}
+.karta h2{font-size:clamp(26px,6.5vw,40px)}
+.karta p{margin:0;line-height:1.5;max-width:60ch}
+.karta p em{font-style:normal;font-weight:700;color:var(--ruza)}
+.legenda{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.stavka{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:12px;background:rgba(255,242,218,.05);text-align:center}
+.stavka b{font-size:13px;font-weight:700}
+.stavka span{font-size:12px;font-weight:700;color:var(--zlato);font-variant-numeric:tabular-nums;text-wrap:balance}
+.stavka.skok span{color:var(--magla)}
+.stavka.opasno{background:rgba(255,94,168,.13);box-shadow:inset 0 0 0 1px rgba(255,94,168,.6)}
+.stavka.opasno span{color:var(--ruza)}
+.stavka.siroka{grid-column:1/-1;flex-direction:row;align-items:center;gap:12px;padding:8px 12px;text-align:left}
+.stavka.siroka div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stavka.siroka span{font-weight:500;text-wrap:pretty}
+.stavka.bend{background:rgba(95,160,255,.1);box-shadow:inset 0 0 0 1px rgba(140,190,255,.45)}
+.stavka.bend span{color:#9cc8ff}
+.stavka.zika{background:rgba(80,190,100,.12);box-shadow:inset 0 0 0 1px rgba(120,210,130,.5)}
+.stavka.zika span{color:#9fe0a6}
+@media (max-width:360px){.legenda{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kontrole{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--magla)}
+kbd{display:inline-block;min-width:22px;padding:1px 6px;border-radius:6px;border:1px solid rgba(255,242,218,.3);border-bottom-width:2px;background:rgba(255,242,218,.06);font:700 12px/1.4 var(--f-tekst);color:var(--krem);text-align:center}
+.dno{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.dugme{appearance:none;border:0;cursor:pointer;padding:14px 22px;border-radius:14px;background:var(--zlato);color:var(--noc);font-family:var(--f-naslov);font-size:19px;box-shadow:0 4px 0 #a66f12,0 10px 30px rgba(244,183,59,.3);transition:transform .1s,box-shadow .1s}
+.dugme:hover{transform:translateY(-1px)}
+.dugme:active{transform:translateY(3px);box-shadow:0 1px 0 #a66f12}
+.rekord{font-size:13px;color:var(--magla)}
+.rekord b{color:var(--krem)}
+.rezultat{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rezultat div{padding:12px 14px;border-radius:12px;background:rgba(255,242,218,.06)}
+.vel{display:block;font-family:var(--f-naslov);font-size:clamp(24px,6vw,34px);line-height:1.1;color:var(--zlato);font-variant-numeric:tabular-nums}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--magla)}
+.skupljeno{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0;padding:0;list-style:none}
+.skupljeno li{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;background:rgba(255,242,218,.05);font-weight:800;font-variant-numeric:tabular-nums}
+.skupljeno small{font-weight:500;font-size:11px;color:var(--magla)}
+@media (max-width:420px){.skupljeno{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.novi-rekord{align-self:flex-start;padding:4px 10px;border-radius:999px;background:var(--ruza);color:#2a0618;font-weight:800;font-size:13px}
+</style>
+
+</head>
+<body>
+<div id="scena">
+  <canvas id="igra" role="img" aria-label="Laza Spanac trči noćnim seoskim putem"></canvas>
+
+  <div class="hud" id="hud" hidden>
+    <div class="hud-levo">
+      <div class="poeni"><span id="poeni">0</span><span class="mnozilac" id="mnozilac">×1</span></div>
+      <div class="metri" id="metri">0 m</div>
+    </div>
+    <div class="ruta">
+      <div class="ruta-tekst"><b id="etapa">Selo</b><span aria-hidden="true">→</span><span class="sled" id="sledeca">Kafana</span><span class="dalj" id="dosledece">400 m</span></div>
+      <div class="ruta-traka"><div class="ruta-puni" id="rutaPuni"></div><div id="rutaTacke"></div></div>
+    </div>
+    <div class="hud-desno">
+      <button class="ikona" id="dugmeZvuk" type="button" aria-label="Isključi zvuk">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="talas" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="crta" d="M16 9l6 6M22 9l-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="ikona" id="dugmePauza" type="button" aria-label="Pauza">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="strelice" id="strelice" hidden>
+    <button class="strelica" id="dugmeLevo" type="button" aria-label="Levo"><svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="strelica" id="dugmeDesno" type="button" aria-label="Desno"><svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+
+  <div class="poruka" id="poruka" aria-live="polite"><small id="porukaMala"></small><strong id="porukaVelika"></strong></div>
+
+  <section class="meni" id="meniStart" aria-labelledby="naslovStart">
+    <div class="karta">
+      <div>
+        <div class="obrva">Turneja od rodnog sela do Sokača</div>
+        <h1 id="naslovStart">Laza Spanac</h1>
+      </div>
+      <p>Laza trči putem od sale do sale i usput hvata pevačice za duet (najčešće Maju, ali i Bogdanu i Jelenu), novčanice od 50, 100 i 500 evra, čašice rakije, mikrofone, trube i harmonike. Ali pazi na <em>Vericu vešticu</em>: ako je Laza slučajno uhvati, začara ga, on se zaljubi i vraća se na početak.</p>
+      <ul class="legenda">
+        <li class="stavka"><canvas data-ik="pevacica"></canvas><b>Pevačica</b><span>+100 duet</span></li>
+        <li class="stavka"><canvas data-ik="rakija"></canvas><b>Rakija</b><span>+15</span></li>
+        <li class="stavka"><canvas data-ik="mikrofon"></canvas><b>Mikrofon</b><span>+25</span></li>
+        <li class="stavka"><canvas data-ik="truba"></canvas><b>Truba</b><span>+30</span></li>
+        <li class="stavka"><canvas data-ik="harmonika"></canvas><b>Harmonika</b><span>+40</span></li>
+        <li class="stavka"><canvas data-ik="nota"></canvas><b>Evri</b><span>50, 100, 500 €</span></li>
+        <li class="stavka skok"><canvas data-ik="bala"></canvas><b>Bale, burad, stolovi</b><span>preskoči</span></li>
+        <li class="stavka opasno"><canvas data-ik="diva"></canvas><b>Verica veštica</b><span>nazad na početak</span></li>
+        <li class="stavka siroka skok"><canvas data-ik="zvucnik"></canvas><div><b>Zvučnici</b><span>Previsoki su za skok, moraš da ih zaobiđeš. Udarac: −50.</span></div></li>
+        <li class="stavka siroka bend"><canvas data-ik="bend"></canvas><div><b>Bend: harmonikaš Vasa, gitarista Miljan, klavijaturisti Milan i Novak</b><span>Ne daju Lazi da pije i da se zaljubljuje. Ne mogu da se preskoče, zaobiđi ih. Udarac: −100.</span></div></li>
+        <li class="stavka siroka zika"><canvas data-ik="zika"></canvas><div><b>Žika Spanac, najveći neprijatelj</b><span>Pojavljuje se retko, ali je ogroman i zauzima dve trake. Ako uhvati Lazu, sputa ga konopcem: Laza stane i gubi 300 poena.</span></div></li>
+      </ul>
+      <div class="kontrole">
+        <span><kbd>←</kbd> <kbd>→</kbd> levo i desno</span>
+        <span><kbd>↑</kbd> skok</span>
+        <span>Telefon: dodirni levu ili desnu stranu ekrana</span>
+      </div>
+      <div class="dno">
+        <button class="dugme" id="dugmeStart" type="button">Kreni na turneju</button>
+        <div class="rekord" id="rekordStart">Još nema rekorda</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="meni" id="meniKraj" hidden aria-labelledby="naslovKraj">
+    <div class="karta">
+      <div>
+        <div class="obrva ruzicasta">Nazad na početak</div>
+        <h2 id="naslovKraj">Laza se zaljubio u Vericu</h2>
+      </div>
+      <p id="krajTekst"></p>
+      <div class="novi-rekord" id="noviRekord" hidden>Novi rekord!</div>
+      <div class="rezultat">
+        <div><span class="vel" id="krajPoeni">0</span><span class="lbl">poena</span></div>
+        <div><span class="vel" id="krajMetri">0 m</span><span class="lbl">pređeno</span></div>
+      </div>
+      <ul class="skupljeno">
+        <li><canvas data-ik="pevacica" data-v="36"></canvas><span id="kPevacica">0</span><small>pevačice</small></li>
+        <li><canvas data-ik="rakija" data-v="36"></canvas><span id="kRakija">0</span><small>rakije</small></li>
+        <li><canvas data-ik="mikrofon" data-v="36"></canvas><span id="kMikrofon">0</span><small>mikrofoni</small></li>
+        <li><canvas data-ik="truba" data-v="36"></canvas><span id="kTruba">0</span><small>trube</small></li>
+        <li><canvas data-ik="harmonika" data-v="36"></canvas><span id="kHarmonika">0</span><small>harmonike</small></li>
+        <li><canvas data-ik="nota" data-v="36"></canvas><span id="kNota">0 €</span><small>zarađeno</small></li>
+      </ul>
+      <div class="dno">
+        <button class="dugme" id="dugmePonovo" type="button">Kreni ponovo</button>
+        <div class="rekord" id="rekordKraj"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="meni" id="meniPauza" hidden aria-labelledby="naslovPauza">
+    <div class="karta mala">
+      <div>
+        <div class="obrva">Pauza</div>
+        <h2 id="naslovPauza">Laza predahne</h2>
+      </div>
+      <p>Turneja čeka. Pritisni P ili Esc da nastaviš.</p>
+      <div class="dno"><button class="dugme" id="dugmeNastavi" type="button">Nastavi</button></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const scena = $('scena'), cv = $('igra'), mainCtx = cv.getContext('2d');
+let ctx = mainCtx;
+const MIRNO = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const TAU = Math.PI * 2;
+const C = { zlato:'#f4b73b', crvena:'#d92b3f', ruza:'#ff5ea8', krem:'#fff2da', noc:'#170d2b', magla:'#c4b4e4' };
+const FOG = [74, 36, 96];
+const SIJ = ['#f4b73b', '#ff5ea8', '#5fd3ff', '#86e08f', '#ff6b4a'];
+const CAM = 4, G = 21, SKOK = 6.8;
+
+const ETAPE = [
+  { ime:'Rodno selo', kratko:'Selo', m:0, nebo:'selo' },
+  { ime:'Svečana sala „Insomnija“', kratko:'Insomnija', m:400, nebo:'selo' },
+  { ime:'Svečana sala „Mimoza“', kratko:'Mimoza', m:900, nebo:'vasar' },
+  { ime:'Restoran „Kod Hrane“', kratko:'Kod Hrane', m:1500, nebo:'vasar' },
+  { ime:'Restoran „Konstantin“', kratko:'Konstantin', m:2200, nebo:'grad' },
+  { ime:'Restoran „Vožd“', kratko:'Vožd', m:3000, nebo:'grad' },
+  { ime:'Restoran „Mehana“', kratko:'Mehana', m:3900, nebo:'arena' },
+  { ime:'Restoran „Sokače“', kratko:'Sokače', m:4900, nebo:'arena' }
+];
+const CILJ = ETAPE[ETAPE.length - 1].m;
+const LUKOVI = [{ m:9, text:'Srećan put, Lazo!' }].concat(ETAPE.slice(1).map(e => ({ m:e.m, text:e.ime })));
+const BEND = {
+  vasa:   { ime:'Vasa',   kosa:'#2a1a14', kosulja:'#f3ecdc', prsluk:'#8c1428', majica:null,      pant:'#2a2238', brkovi:true,  instr:'harmonika', koza:'#e3a77f', seed:1.1 },
+  miljan: { ime:'Miljan', kosa:'#3a2416', kosulja:'#2b2638', prsluk:null,      majica:'#e8e2d6', pant:'#24304a', brkovi:false, instr:'gitara',    koza:'#f0c09c', seed:2.7 }
+};
+const PAR = [
+  { ime:'Milan', kosa:'#5a3a22', kosulja:'#2a7de1', prsluk:null, majica:null, pant:'#22202c', brkovi:false, instr:null, koza:'#f2c6a2', seed:3.3 },
+  { ime:'Novak', kosa:'#1a1210', kosulja:'#2fae62', prsluk:null, majica:null, pant:'#22202c', brkovi:true,  instr:null, koza:'#e3a77f', seed:4.9 }
+];
+const KOSE = ['#2a1a14','#6e3219','#e6be68','#a8232e','#4a2c1c','#1c1430'];
+const HALJINE = ['#23b3a0','#e24a3b','#7b4fd8','#f08c24','#2a7de1','#2fae62','#e04f9a'];
+const KOZE = ['#f2c6a2','#e3a77f','#c88c64'];
+const CIPELE = ['#1a1020','#d92b3f','#f4b73b','#fff2da'];
+const BOD = { nota:5, rakija:15, mikrofon:25, truba:30, harmonika:40, pevacica:100 };
+const LANES = [-1, 0, 1];
+
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const fmt = n => String(Math.max(0, Math.round(n))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+const instr = ime => ime.slice(0, -1) + 'om';
+
+// ---------- stanje ----------
+const S = {
+  mode:'menu', t:0, dist:0, speed:9, ph:0, lane:0, px:0, jy:0, vy:0, air:false,
+  inv:0, shake:0, drunk:0, stumble:0, score:0, combo:0, comboT:0,
+  objs:[], fx:[], next:30, stage:0, skyCur:'selo', skyPrev:null, skyFade:1,
+  loveT:0, heartT:0, divaO:null,
+  counts:{ pevacica:0, rakija:0, mikrofon:0, truba:0, harmonika:0, nota:0, bend:0, zika:0 }
+};
+let rekord = { poeni:0, metri:0 };
+try { const r = JSON.parse(localStorage.getItem('lazaSpanac.rekord') || 'null'); if (r && typeof r.poeni === 'number') rekord = { poeni:r.poeni | 0, metri:r.metri | 0 }; } catch (e) {}
+let zvukUkljucen = true;
+try { if (localStorage.getItem('lazaSpanac.zvuk') === '0') zvukUkljucen = false; } catch (e) {}
+function sacuvaj() { try { localStorage.setItem('lazaSpanac.rekord', JSON.stringify(rekord)); } catch (e) {} }
+
+// ---------- ekran i perspektiva ----------
+let W = 1, H = 1, DPR = 1, horY = 0, feetY = 0, L = 100, skylineH = 60;
+let skyCv = null, skylines = {};
+
+function proj(x, z, y) {
+  const k = CAM / (z + CAM);
+  return { x: W / 2 + x * L * k, y: horY + (feetY - horY) * k - (y || 0) * L * k, k };
+}
+const fogF = z => clamp((z - 6) / 74, 0, 1);
+const fadeA = z => clamp((84 - z) / 16, 0, 1);
+function mixc(c, f) { return 'rgb(' + ((c[0] + (FOG[0] - c[0]) * f) | 0) + ',' + ((c[1] + (FOG[1] - c[1]) * f) | 0) + ',' + ((c[2] + (FOG[2] - c[2]) * f) | 0) + ')'; }
+
+function makeCanvas(w, h) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, Math.round(w * DPR)); c.height = Math.max(1, Math.round(h * DPR));
+  const q = c.getContext('2d'); q.setTransform(DPR, 0, 0, DPR, 0, 0);
+  return [c, q];
+}
+
+function resize() {
+  const r = scena.getBoundingClientRect();
+  W = Math.max(1, r.width); H = Math.max(1, r.height);
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
+  horY = H * 0.36; feetY = H * 0.86;
+  L = Math.min(W * 0.27, H * 0.21);
+  skylineH = horY * 0.55;
+  buildSky();
+  skylines = {};
+  for (const t of ['selo', 'vasar', 'grad', 'arena']) skylines[t] = buildSkyline(t);
+}
+
+function buildSky() {
+  const [c, q] = makeCanvas(W, horY + 2);
+  const g = q.createLinearGradient(0, 0, 0, horY);
+  g.addColorStop(0, '#0b0620'); g.addColorStop(0.5, '#1f1043'); g.addColorStop(0.82, '#43205e'); g.addColorStop(1, '#83396a');
+  q.fillStyle = g; q.fillRect(0, 0, W, horY + 2);
+  const n = Math.round(W * horY / 3200);
+  for (let i = 0; i < n; i++) {
+    const sx = hash(i * 1.37) * W, sy = hash(i * 2.71 + 5) * horY * 0.75, r = 0.4 + hash(i * 9.1) * 1.1;
+    q.fillStyle = 'rgba(255,242,218,' + (0.25 + hash(i * 4.3) * 0.65).toFixed(2) + ')';
+    q.beginPath(); q.arc(sx, sy, r, 0, TAU); q.fill();
+  }
+  const mr = Math.min(W, H) * 0.036, mx = W * 0.8, my = horY * 0.32;
+  const mg = q.createRadialGradient(mx, my, mr * 0.8, mx, my, mr * 4);
+  mg.addColorStop(0, 'rgba(255,230,190,.35)'); mg.addColorStop(1, 'rgba(255,230,190,0)');
+  q.fillStyle = mg; q.beginPath(); q.arc(mx, my, mr * 4, 0, TAU); q.fill();
+  q.fillStyle = '#ffeccc'; q.beginPath(); q.arc(mx, my, mr, 0, TAU); q.fill();
+  q.fillStyle = 'rgba(200,170,140,.35)';
+  q.beginPath(); q.arc(mx - mr * 0.3, my - mr * 0.2, mr * 0.22, 0, TAU); q.fill();
+  q.beginPath(); q.arc(mx + mr * 0.35, my + mr * 0.25, mr * 0.15, 0, TAU); q.fill();
+  skyCv = c;
+}
+
+// ---------- silueta na horizontu ----------
+function brdo(q, w, base, amp, col, seed) {
+  q.fillStyle = col; q.beginPath(); q.moveTo(0, base);
+  for (let i = 0; i <= 48; i++) { const px = i / 48 * w; q.lineTo(px, base - amp * (0.55 + 0.45 * Math.sin(i * 0.37 + seed) * Math.cos(i * 0.13 + seed * 2))); }
+  q.lineTo(w, base); q.closePath(); q.fill();
+}
+function prozor(q, x, y, w, h) {
+  q.fillStyle = 'rgba(255,200,100,.18)'; q.beginPath(); q.arc(x + w / 2, y + h / 2, Math.max(w, h) * 1.6, 0, TAU); q.fill();
+  q.fillStyle = '#ffc865'; q.fillRect(x, y, w, h);
+}
+function kucaSil(q, cx, base, w, h, col, lit) {
+  q.fillStyle = col; q.fillRect(cx - w / 2, base - h, w, h);
+  q.beginPath(); q.moveTo(cx - w * 0.6, base - h); q.lineTo(cx, base - h - h * 0.7); q.lineTo(cx + w * 0.6, base - h); q.closePath(); q.fill();
+  if (lit) { prozor(q, cx - w * 0.3, base - h * 0.68, w * 0.18, h * 0.28); if (w > h * 1.4) prozor(q, cx + w * 0.1, base - h * 0.68, w * 0.18, h * 0.28); }
+}
+function crkva(q, cx, base, u, col) {
+  q.fillStyle = col;
+  q.fillRect(cx - 40 * u, base - 44 * u, 80 * u, 44 * u);
+  q.beginPath(); q.moveTo(cx - 44 * u, base - 44 * u); q.lineTo(cx, base - 58 * u); q.lineTo(cx + 44 * u, base - 44 * u); q.closePath(); q.fill();
+  q.fillRect(cx - 13 * u, base - 72 * u, 26 * u, 18 * u);
+  q.beginPath(); q.arc(cx, base - 72 * u, 13 * u, Math.PI, 0); q.fill();
+  q.fillRect(cx - 58 * u, base - 92 * u, 18 * u, 92 * u);
+  q.beginPath(); q.moveTo(cx - 60 * u, base - 92 * u); q.lineTo(cx - 49 * u, base - 108 * u); q.lineTo(cx - 38 * u, base - 92 * u); q.closePath(); q.fill();
+  q.strokeStyle = col; q.lineWidth = 2 * u;
+  for (const [x0, y0] of [[cx, base - 85 * u], [cx - 49 * u, base - 108 * u]]) {
+    q.beginPath(); q.moveTo(x0, y0); q.lineTo(x0, y0 - 10 * u); q.moveTo(x0 - 4 * u, y0 - 6 * u); q.lineTo(x0 + 4 * u, y0 - 6 * u); q.stroke();
+  }
+  for (const wx of [-26, -10, 6, 22]) prozor(q, cx + wx * u, base - 32 * u, 5 * u, 10 * u);
+  prozor(q, cx - 51 * u, base - 70 * u, 4 * u, 9 * u);
+}
+function topola(q, cx, base, h, u, col) { q.fillStyle = col; q.beginPath(); q.ellipse(cx, base - h * 0.55, 6 * u, h * 0.5, 0, 0, TAU); q.fill(); }
+function vrteska(q, cx, base, u) {
+  const r = 42 * u, cy = base - r - 12 * u;
+  q.strokeStyle = '#2f1c50'; q.lineWidth = 2.2 * u;
+  q.beginPath(); q.moveTo(cx - 24 * u, base); q.lineTo(cx, cy); q.lineTo(cx + 24 * u, base); q.stroke();
+  q.beginPath(); q.arc(cx, cy, r, 0, TAU); q.stroke();
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; q.beginPath(); q.moveTo(cx, cy); q.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); q.stroke(); }
+  for (let i = 0; i < 24; i++) {
+    const a = i / 24 * TAU, bx = cx + Math.cos(a) * r, by = cy + Math.sin(a) * r;
+    q.fillStyle = SIJ[i % 5]; q.globalAlpha = 0.25; q.beginPath(); q.arc(bx, by, 4.5 * u, 0, TAU); q.fill();
+    q.globalAlpha = 1; q.beginPath(); q.arc(bx, by, 1.7 * u, 0, TAU); q.fill();
+  }
+}
+function sator(q, cx, base, w, h, i) {
+  q.fillStyle = '#21113c'; q.beginPath(); q.moveTo(cx - w / 2, base); q.lineTo(cx - w / 2, base - h * 0.45); q.lineTo(cx, base - h); q.lineTo(cx + w / 2, base - h * 0.45); q.lineTo(cx + w / 2, base); q.closePath(); q.fill();
+  q.fillStyle = 'rgba(217,43,63,.55)';
+  for (let s = 0; s < 4; s++) { const x0 = cx - w / 2 + s * w / 4; if (s % 2) continue; q.beginPath(); q.moveTo(cx, base - h); q.lineTo(x0, base - h * 0.45); q.lineTo(x0 + w / 4, base - h * 0.45); q.closePath(); q.fill(); }
+  q.fillStyle = 'rgba(255,200,100,.7)'; q.fillRect(cx - w * 0.1, base - h * 0.3, w * 0.2, h * 0.3);
+  q.fillStyle = SIJ[i % 5]; q.beginPath(); q.moveTo(cx, base - h); q.lineTo(cx, base - h - 8); q.lineTo(cx + 7, base - h - 5); q.closePath(); q.fill();
+}
+function lampioni(q, sw, y, u) {
+  const span = 80 * u;
+  for (let x = 0; x < sw; x += span) {
+    q.strokeStyle = 'rgba(30,18,50,.9)'; q.lineWidth = 1; q.beginPath(); q.moveTo(x, y); q.quadraticCurveTo(x + span / 2, y + 14 * u, x + span, y); q.stroke();
+    for (let j = 1; j < 6; j++) { const t = j / 6, bx = x + span * t, by = y + 4 * t * (1 - t) * 7 * u * 2 * 0.5; q.fillStyle = SIJ[(j + Math.round(x)) % 5]; q.beginPath(); q.arc(bx, by + 1, 1.8 * u, 0, TAU); q.fill(); }
+  }
+}
+function zgrade(q, sw, base, u, arena) {
+  let cx = 0, i = 0;
+  while (cx < sw) {
+    const w = (22 + hash(i * 1.7) * 34) * u, h = (28 + hash(i * 2.9) * (arena ? 55 : 72)) * u;
+    if (arena && Math.abs(cx + w / 2 - sw * 0.5) < 115 * u) { cx += w; i++; continue; }
+    q.fillStyle = i % 2 ? '#170c2c' : '#1c1034'; q.fillRect(cx, base - h, w - 2 * u, h);
+    for (let wy = base - h + 6 * u; wy < base - 6 * u; wy += 8 * u) {
+      for (let wx = cx + 4 * u; wx < cx + w - 8 * u; wx += 7 * u) {
+        const r = hash(wx * 0.13 + wy * 0.71);
+        if (r < 0.42) { q.fillStyle = r < 0.06 ? 'rgba(255,94,168,.8)' : 'rgba(255,210,120,.85)'; q.fillRect(wx, wy, 3 * u, 4 * u); }
+      }
+    }
+    cx += w; i++;
+  }
+}
+function toranj(q, cx, base, u) {
+  q.fillStyle = '#1a0f30';
+  q.beginPath(); q.moveTo(cx - 6 * u, base); q.lineTo(cx - 2.5 * u, base - 92 * u); q.lineTo(cx + 2.5 * u, base - 92 * u); q.lineTo(cx + 6 * u, base); q.closePath(); q.fill();
+  q.beginPath(); q.ellipse(cx, base - 84 * u, 9 * u, 5 * u, 0, 0, TAU); q.fill();
+  q.fillRect(cx - 1 * u, base - 112 * u, 2 * u, 22 * u);
+  q.fillStyle = '#ff4a5a'; q.beginPath(); q.arc(cx, base - 112 * u, 2 * u, 0, TAU); q.fill();
+  q.fillStyle = 'rgba(255,210,120,.85)'; q.fillRect(cx - 7 * u, base - 85 * u, 14 * u, 1.6 * u);
+}
+function arenaKupola(q, cx, base, u) {
+  q.fillStyle = '#1c1034';
+  q.beginPath(); q.ellipse(cx, base - 10 * u, 104 * u, 46 * u, 0, Math.PI, 0); q.fill();
+  q.fillRect(cx - 104 * u, base - 10 * u, 208 * u, 10 * u);
+  q.strokeStyle = 'rgba(255,94,168,.85)'; q.lineWidth = 2.5 * u;
+  q.beginPath(); q.ellipse(cx, base - 10 * u, 94 * u, 36 * u, 0, Math.PI * 1.04, Math.PI * 1.96); q.stroke();
+  q.strokeStyle = 'rgba(244,183,59,.85)'; q.lineWidth = 2 * u;
+  q.beginPath(); q.ellipse(cx, base - 10 * u, 80 * u, 24 * u, 0, Math.PI * 1.06, Math.PI * 1.94); q.stroke();
+  q.fillStyle = 'rgba(255,210,120,.9)';
+  for (let i = -8; i <= 8; i++) q.fillRect(cx + i * 11 * u - 2 * u, base - 8 * u, 4 * u, 6 * u);
+}
+function buildSkyline(type) {
+  const sw = W + 240, sh = skylineH, u = sh / 120, base = sh;
+  const [c, q] = makeCanvas(sw, sh);
+  const SIL = '#170c2c';
+  brdo(q, sw, base, 46 * u, '#2a1748', 1.3);
+  brdo(q, sw, base, (type === 'selo' || type === 'vasar' ? 26 : 14) * u, '#1f1038', 4.1);
+  if (type === 'selo') {
+    crkva(q, sw * 0.3, base, u, SIL);
+    const step = 60 * u;
+    for (let i = 0; i < Math.ceil(sw / step); i++) {
+      const cx = i * step + hash(i * 3.3) * 30 * u;
+      if (Math.abs(cx - sw * 0.3) < 75 * u || hash(i * 7.1) < 0.35) continue;
+      kucaSil(q, cx, base, (18 + hash(i * 2.2) * 14) * u, (12 + hash(i * 5.5) * 8) * u, SIL, hash(i * 9.9) < 0.7);
+    }
+    for (let i = 0; i < 12; i++) topola(q, hash(i * 13.7 + 2) * sw, base, (40 + hash(i * 4.4) * 30) * u, u, SIL);
+  } else if (type === 'vasar') {
+    vrteska(q, sw * 0.66, base, u);
+    for (let i = 0; i < 7; i++) sator(q, sw * (0.1 + i * 0.085) + hash(i) * 20 * u, base, (34 + hash(i * 2.7) * 16) * u, (26 + hash(i * 3.1) * 10) * u, i);
+    lampioni(q, sw, base - 46 * u, u);
+    for (let i = 0; i < 8; i++) { const cx = sw * 0.75 + i * 34 * u; kucaSil(q, cx, base, 22 * u, 14 * u, SIL, hash(i * 3.7) < 0.7); }
+  } else {
+    zgrade(q, sw, base, u, type === 'arena');
+    toranj(q, sw * 0.78, base, u);
+    if (type === 'arena') arenaKupola(q, sw * 0.5, base, u);
+  }
+  return c;
+}
+
+// ---------- pomoćno crtanje ----------
+function ell(x, y, rx, ry, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, TAU); ctx.fill(); }
+function limb(x1, y1, x2, y2, w, col) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function rr(x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function sjaj(r, rgb, a) {
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, 'rgba(' + rgb + ',' + a + ')'); g.addColorStop(1, 'rgba(' + rgb + ',0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+}
+function srce(x, y, r, col) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y + r * 0.9);
+  ctx.bezierCurveTo(x - r * 1.6, y - r * 0.2, x - r * 0.7, y - r * 1.5, x, y - r * 0.55);
+  ctx.bezierCurveTo(x + r * 0.7, y - r * 1.5, x + r * 1.6, y - r * 0.2, x, y + r * 0.9); ctx.fill();
+}
+function iskra(x, y, r, col) {
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y - r);
+  ctx.quadraticCurveTo(x, y, x + r, y); ctx.quadraticCurveTo(x, y, x, y + r); ctx.quadraticCurveTo(x, y, x - r, y); ctx.quadraticCurveTo(x, y, x, y - r); ctx.fill();
+}
+function senka(x, y, s, w) { ell(x, y, w * s, w * 0.28 * s, 'rgba(0,0,0,.32)'); }
+
+// ---------- Laza (s leđa) ----------
+function cipela(x, y, gore) { if (gore) { ell(x, y - 1, 6.5, 3.5, '#0c0912'); ell(x, y + 1.5, 6, 3, '#9a7652'); } else ell(x, y, 7.5, 4, '#0c0912'); }
+function mik(x, y, a) { ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.fillStyle = '#16121f'; ctx.fillRect(-2, -15, 4, 13); ell(0, -17, 4.8, 4.8, '#cfd4de'); ctx.restore(); }
+function laza(x, y, s, ph, st) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  if (st.lean) ctx.rotate(st.lean);
+  const stoji = !!st.stop;
+  const sw = stoji ? 0 : Math.sin(ph);
+  const bob = (st.air || stoji) ? 0 : -Math.abs(Math.cos(ph)) * 3.5;
+  ctx.translate(0, bob);
+  const PANT = '#201936', JACK = '#c8223b', JACK_D = '#8c1428', SKIN = '#e3ab84', HAIR = '#120c1a';
+  let lf, rf;
+  if (st.air) { lf = 20; rf = 12; } else if (stoji) { lf = 0; rf = 0; } else { lf = Math.max(0, sw) * 16; rf = Math.max(0, -sw) * 16; }
+  limb(-8, -46, -10, -7 - lf, 13, PANT); limb(8, -46, 10, -7 - rf, 13, PANT);
+  cipela(-10, -4 - lf, lf > 5); cipela(10, -4 - rf, rf > 5);
+  ctx.fillStyle = JACK_D; ctx.beginPath(); ctx.moveTo(-21, -50); ctx.lineTo(21, -50); ctx.lineTo(20 + sw * 1.5, -35); ctx.lineTo(1.5, -37); ctx.lineTo(0, -42); ctx.lineTo(-1.5, -37); ctx.lineTo(-20 + sw * 1.5, -35); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = JACK; ctx.beginPath(); ctx.moveTo(-25, -89); ctx.quadraticCurveTo(0, -95, 25, -89); ctx.lineTo(21, -47); ctx.quadraticCurveTo(0, -44, -21, -47); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.16)'; ctx.beginPath(); ctx.moveTo(14, -91); ctx.quadraticCurveTo(22, -90, 25, -89); ctx.lineTo(21, -47); ctx.quadraticCurveTo(17, -46, 13, -46); ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 16; i++) {
+    const a = 0.25 + 0.75 * Math.max(0, Math.sin(S.t * 6 + i * 1.9));
+    ctx.fillStyle = 'rgba(255,214,120,' + a.toFixed(2) + ')'; ctx.beginPath(); ctx.arc((hash(i * 3.3) - 0.5) * 38, -52 - hash(i * 7.1) * 34, 1.3, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = C.zlato; ctx.font = '12px Bungee, Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('LAZA', 0, -68);
+  if (st.love) {
+    limb(-23, -86, -38, -106, 10, JACK); ell(-39, -108, 4.6, 4.6, SKIN);
+    limb(23, -86, 38, -106, 10, JACK); ell(39, -108, 4.6, 4.6, SKIN); mik(39, -108, 0.5);
+  } else if (st.air) {
+    limb(-23, -86, -35, -106, 10, JACK); ell(-36, -108, 4.6, 4.6, SKIN);
+    limb(23, -86, 35, -104, 10, JACK); ell(36, -106, 4.6, 4.6, SKIN); mik(36, -106, 0.3);
+  } else {
+    const ly = -58 + sw * 9, ry = -58 - sw * 9;
+    limb(-23, -86, -30, ly, 10, JACK); ell(-30, ly + 1, 4.6, 4.6, SKIN);
+    limb(23, -86, 30, ry, 10, JACK); ell(30, ry + 1, 4.6, 4.6, SKIN); mik(30, ry + 1, 0.15);
+  }
+  ctx.fillStyle = '#fff7ea'; ctx.beginPath(); ctx.moveTo(-8, -91); ctx.lineTo(0, -87.5); ctx.lineTo(8, -91); ctx.lineTo(6, -95); ctx.lineTo(-6, -95); ctx.closePath(); ctx.fill();
+  ell(0, -96, 6, 4, SKIN);
+  ell(0, -107, 12, 13, SKIN);
+  ell(0, -110, 12.8, 11.6, HAIR);
+  ell(-12.5, -105, 3, 5, SKIN); ell(12.5, -105, 3, 5, SKIN);
+  ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(-1, -111, 7.5, -2.7, -1.7); ctx.stroke();
+  ctx.restore();
+}
+
+// ---------- pevačice (spreda) ----------
+function lice(K, usne) {
+  ell(-4, -91, 1.5, 1.9, '#1b1020'); ell(4, -91, 1.5, 1.9, '#1b1020');
+  limb(-5.2, -93.2, -7, -94.6, 1, '#1b1020'); limb(5.2, -93.2, 7, -94.6, 1, '#1b1020');
+  ell(-6.5, -87.5, 2.2, 1.4, 'rgba(255,105,140,.45)'); ell(6.5, -87.5, 2.2, 1.4, 'rgba(255,105,140,.45)');
+  ell(0, -85, 2.6, 1.4, usne);
+}
+function pevacica(p, x, y, s, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const sw = Math.sin(t * 3 + p.seed), K = p.koza;
+  ctx.fillStyle = p.kosa; ctx.beginPath(); ctx.ellipse(0, -92, 18, 19, 0, 0, TAU); ctx.fill();
+  rr(-17, -94, 34, 26, 10); ctx.fillStyle = p.kosa; ctx.fill();
+  limb(-6, -30, -7, -5, 5.5, K); limb(6, -30, 7, -5, 5.5, K);
+  ell(-8, -3, 5, 2.8, p.cipele); ell(8, -3, 5, 2.8, p.cipele);
+  ctx.fillStyle = p.haljina; ctx.beginPath(); ctx.moveTo(-11, -78); ctx.quadraticCurveTo(0, -74, 11, -78); ctx.lineTo(14, -58);
+  ctx.quadraticCurveTo(26, -40, 27 + sw * 2, -26); ctx.quadraticCurveTo(0, -20, -27 + sw * 2, -26); ctx.quadraticCurveTo(-26, -40, -14, -58); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillRect(-13.5, -60, 27, 3);
+  for (let i = 0; i < 9; i++) {
+    const a = 0.3 + 0.7 * Math.max(0, Math.sin(t * 5 + i * 2.1 + p.seed));
+    ctx.fillStyle = 'rgba(255,248,220,' + a.toFixed(2) + ')'; ctx.beginPath();
+    ctx.arc((hash(i * 3.7 + p.seed) - 0.5) * (14 + i * 3.2), -56 + hash(i * 5.1 + p.seed) * 28, 1.2, 0, TAU); ctx.fill();
+  }
+  ctx.fillStyle = K; ctx.beginPath(); ctx.ellipse(0, -78, 11, 3.5, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(-3, -86, 6, 8);
+  if (p.vestica) {
+    limb(24, -108, 29, -24, 2.6, '#6b4423');
+    ctx.fillStyle = '#c9a25a'; ctx.beginPath(); ctx.moveTo(26.5, -30); ctx.lineTo(19, -4); ctx.lineTo(40, -4); ctx.lineTo(31.5, -30); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,60,20,.6)'; ctx.lineWidth = 0.8;
+    for (const bx of [23, 29, 35]) { ctx.beginPath(); ctx.moveTo(29, -28); ctx.lineTo(bx, -5); ctx.stroke(); }
+    limb(11, -75, 21, -70, 5, K); limb(21, -70, 25.5, -82, 5, K); ell(25.5, -83, 3.4, 3.4, K);
+  } else {
+    const wv = Math.sin(t * 7 + p.seed) * 6;
+    limb(11, -75, 20, -86, 5, K); limb(20, -86, 22 + wv * 0.5, -101, 5, K); ell(22 + wv * 0.5, -103, 3.4, 3.4, K);
+  }
+  limb(-11, -75, -18, -63, 5, K); limb(-18, -63, -9, -75, 5, K);
+  ell(0, -91, 10.5, 12, K);
+  ctx.fillStyle = p.kosa; ctx.beginPath(); ctx.ellipse(0, -99, 12, 7, 0, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-11, -92, 3.5, 9, 0.1, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11, -92, 3.5, 9, -0.1, 0, TAU); ctx.fill();
+  lice(K, '#c8203f');
+  ell(-10.5, -85.5, 1.6, 1.6, C.zlato); ell(10.5, -85.5, 1.6, 1.6, C.zlato);
+  if (p.vestica) {
+    ctx.fillStyle = '#1d1428';
+    ctx.beginPath(); ctx.ellipse(0, -101, 21, 4.5, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-11, -102); ctx.quadraticCurveTo(-4, -118, 3, -131); ctx.quadraticCurveTo(10, -133, 15, -126); ctx.quadraticCurveTo(8, -126, 6, -120); ctx.lineTo(11, -102); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#7b4fd8'; ctx.fillRect(-10.5, -108, 21, 4);
+    ctx.fillStyle = C.zlato; ctx.fillRect(-2.5, -108.5, 5, 5);
+    ctx.fillStyle = '#7b4fd8'; ctx.fillRect(-1.2, -107.2, 2.4, 2.4);
+  }
+  ctx.save(); ctx.translate(-9, -76); ctx.rotate(0.5); ctx.fillStyle = '#1d1828'; ctx.fillRect(-1.6, -1, 3.2, 9); ctx.restore();
+  ell(-6.5, -80, 2.8, 2.8, '#c9ced9'); ell(-9, -75, 3, 3, K);
+  ctx.restore();
+}
+function diva(p, x, y, s, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const pul = 0.7 + 0.3 * Math.sin(t * 5 + p.seed);
+  const g = ctx.createRadialGradient(0, -62, 6, 0, -62, 80);
+  g.addColorStop(0, 'rgba(214,92,255,' + (0.55 * pul).toFixed(2) + ')'); g.addColorStop(0.6, 'rgba(214,92,255,' + (0.18 * pul).toFixed(2) + ')'); g.addColorStop(1, 'rgba(214,92,255,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -62, 80, 0, TAU); ctx.fill();
+  const K = '#f3c9a8', KOSA = '#1a1024';
+  ctx.fillStyle = KOSA; ctx.beginPath(); ctx.ellipse(0, -96, 19, 20, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-19, -96); ctx.quadraticCurveTo(-25, -70, -17, -50); ctx.lineTo(17, -50); ctx.quadraticCurveTo(25, -70, 19, -96); ctx.closePath(); ctx.fill();
+  const gg = ctx.createLinearGradient(-25, 0, 25, 0); gg.addColorStop(0, '#2a1446'); gg.addColorStop(0.5, '#6a3fb0'); gg.addColorStop(1, '#2a1446');
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.moveTo(-11, -82); ctx.quadraticCurveTo(0, -78, 11, -82); ctx.lineTo(13, -62);
+  ctx.quadraticCurveTo(15, -50, 11, -36); ctx.quadraticCurveTo(14, -12, 28, -1); ctx.quadraticCurveTo(0, 4, -28, -1); ctx.quadraticCurveTo(-14, -12, -11, -36); ctx.quadraticCurveTo(-15, -50, -13, -62); ctx.closePath(); ctx.fill();
+  for (let i = 0; i < 10; i++) {
+    const a = Math.max(0, Math.sin(t * 6 + i * 1.7 + p.seed));
+    if (a > 0.2) iskra((hash(i * 2.3 + 1) - 0.5) * (14 + i * 2.6), -70 + hash(i * 4.1) * 66, 1.5 + a * 2, 'rgba(255,255,255,' + a.toFixed(2) + ')');
+  }
+  ctx.fillStyle = K; ctx.beginPath(); ctx.ellipse(0, -82, 11, 3.5, 0, Math.PI, 0); ctx.fill(); ctx.fillRect(-3, -90, 6, 8);
+  ctx.strokeStyle = '#fff6d6'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.arc(0, -86, 6, 0.3, Math.PI - 0.3); ctx.stroke();
+  limb(-22, -112, -30, -22, 2.6, '#6b4423');
+  ctx.fillStyle = '#c9a25a'; ctx.beginPath(); ctx.moveTo(-32.5, -28); ctx.lineTo(-40, -3); ctx.lineTo(-21, -3); ctx.lineTo(-28, -28); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(90,60,20,.6)'; ctx.lineWidth = 0.8;
+  for (const bx of [-37, -30.5, -24]) { ctx.beginPath(); ctx.moveTo(-30, -26); ctx.lineTo(bx, -5); ctx.stroke(); }
+  limb(-11, -79, -21, -72, 5, K); limb(-21, -72, -24.7, -82, 5, K); ell(-24.7, -83, 3.4, 3.4, K);
+  limb(11, -79, 19, -72, 5, K); limb(19, -72, 6, -88, 5, K); ell(6, -89, 3.4, 3.4, K);
+  ell(0, -95, 10.5, 12, K);
+  ctx.fillStyle = KOSA; ctx.beginPath(); ctx.ellipse(0, -103, 12, 7, 0, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-12, -103); ctx.quadraticCurveTo(-2, -104, 4, -97); ctx.quadraticCurveTo(-4, -100, -12, -98); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-11.5, -90, 3.5, 12, 0.1, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(11.5, -90, 3.5, 12, -0.1, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(0, -4);
+  ell(-4.5, -94, 3, 1.5, 'rgba(255,94,168,.45)'); ell(4.5, -94, 3, 1.5, 'rgba(255,94,168,.45)');
+  ctx.strokeStyle = '#1b1020'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(-4, -92, 2, 0.2, Math.PI - 0.2); ctx.stroke();
+  ell(4, -91, 1.5, 1.9, '#1b1020'); limb(5.2, -93.2, 7.4, -94.8, 1, '#1b1020'); limb(4, -93.6, 5, -95.6, 1, '#1b1020');
+  ell(-6.5, -87.5, 2.2, 1.4, 'rgba(255,105,140,.5)'); ell(6.5, -87.5, 2.2, 1.4, 'rgba(255,105,140,.5)');
+  ell(0, -85, 2.8, 1.8, '#e0124f'); ell(5.5, -86, 0.7, 0.7, '#3a2030');
+  ctx.restore();
+  ctx.fillStyle = '#1d1428';
+  ctx.beginPath(); ctx.ellipse(0, -106, 23, 5, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-12, -107); ctx.quadraticCurveTo(-4, -124, 3, -138); ctx.quadraticCurveTo(11, -140, 17, -132); ctx.quadraticCurveTo(9, -132, 7, -125); ctx.lineTo(12, -107); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#c04bd8'; ctx.fillRect(-11.5, -113, 23, 4.5);
+  ctx.fillStyle = C.zlato; ctx.fillRect(-3, -113.5, 6, 5.5);
+  ctx.fillStyle = '#c04bd8'; ctx.fillRect(-1.5, -112, 3, 2.5);
+  const ga = ctx.globalAlpha;
+  for (let i = 0; i < 3; i++) { const h = (t * 0.7 + i / 3) % 1; ctx.globalAlpha = ga * (1 - h); srce(10 + h * 24, -92 - h * 30, 3 + h * 4, C.ruza); }
+  ctx.globalAlpha = ga;
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * TAU + t * 0.8, tw = Math.max(0, Math.sin(t * 4 + i * 2));
+    iskra(Math.cos(a) * 42, -62 + Math.sin(a) * 50, 2 + tw * 4, 'rgba(255,240,250,' + (0.3 + 0.7 * tw).toFixed(2) + ')');
+  }
+  ctx.restore();
+}
+
+// ---------- predmeti ----------
+const NOVAC = {
+  50:  { boje:['#f08c24', '#ffd39a', '#a8540c'], sjaj:'255,190,110', tekst:'#ffd39a' },
+  100: { boje:['#2fae62', '#c4ecd0', '#1a6e3a'], sjaj:'120,230,150', tekst:'#9fe0a6' },
+  500: { boje:['#8a5bd6', '#e2d2ff', '#4f2c8c'], sjaj:'200,160,255', tekst:'#ddc9ff' }
+};
+function novcanica(v, t, seed) {
+  const n = NOVAC[v] || NOVAC[50], c = n.boje;
+  sjaj(v === 500 ? 36 : 30, n.sjaj, v === 500 ? 0.5 : 0.35);
+  ctx.save();
+  ctx.scale(0.6 + 0.4 * Math.abs(Math.cos(t * 3 + seed)), 1);
+  ctx.rotate(-0.12);
+  const g = ctx.createLinearGradient(-23, -13, 23, 13); g.addColorStop(0, c[1]); g.addColorStop(1, c[0]);
+  ctx.fillStyle = g; rr(-24, -14, 48, 28, 3); ctx.fill();
+  ctx.strokeStyle = c[2]; ctx.lineWidth = 1.2; rr(-21, -11, 42, 22, 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.arc(-8, 11, 9, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = c[2];
+  for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; ctx.beginPath(); ctx.arc(-13 + Math.cos(a) * 4.5, -4 + Math.sin(a) * 4.5, 0.9, 0, TAU); ctx.fill(); }
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'right';
+  ctx.font = '800 ' + (v === 500 ? 12 : 13) + 'px Rubik, sans-serif'; ctx.fillText(String(v), 20, -3);
+  ctx.font = '800 9px Rubik, sans-serif'; ctx.fillText('€', 20, 7);
+  ctx.restore();
+}
+function rakija() {
+  sjaj(30, '255,205,110', 0.35);
+  ctx.beginPath(); ctx.moveTo(-11.2, -8); ctx.lineTo(11.2, -8); ctx.lineTo(8.4, 15); ctx.lineTo(-8.4, 15); ctx.closePath();
+  const g = ctx.createLinearGradient(0, -8, 0, 15); g.addColorStop(0, '#ffd76a'); g.addColorStop(1, '#d9902a'); ctx.fillStyle = g; ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-13, -20); ctx.lineTo(13, -20); ctx.lineTo(9, 16); ctx.lineTo(-9, 16); ctx.closePath();
+  ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fill(); ctx.strokeStyle = 'rgba(255,250,235,.9)'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,250,235,.75)'; ctx.fillRect(-9.5, 15, 19, 5);
+  limb(-11, -8, 11, -8, 1.5, 'rgba(255,240,200,.9)');
+  limb(-8, -16, -6, 10, 2.5, 'rgba(255,255,255,.7)');
+}
+function mikrofon() {
+  sjaj(30, '220,225,255', 0.3);
+  ctx.save(); ctx.rotate(-0.4);
+  ctx.fillStyle = '#1d1828'; rr(-5, -8, 10, 32, 4); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fillRect(-3, -6, 2, 26);
+  ctx.fillStyle = C.zlato; ctx.fillRect(-6.5, -10, 13, 5);
+  const g = ctx.createRadialGradient(-4, -24, 2, 0, -20, 13); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#8d93a6');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -20, 12, 0, TAU); ctx.fill();
+  ctx.save(); ctx.beginPath(); ctx.arc(0, -20, 12, 0, TAU); ctx.clip();
+  ctx.strokeStyle = 'rgba(40,40,60,.35)'; ctx.lineWidth = 1;
+  for (let i = -8; i <= 8; i += 4) { ctx.beginPath(); ctx.moveTo(i, -32); ctx.lineTo(i, -8); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-12, -20 + i); ctx.lineTo(12, -20 + i); ctx.stroke(); }
+  ctx.restore(); ctx.restore();
+}
+function truba() {
+  sjaj(34, '244,183,59', 0.33);
+  const g = ctx.createLinearGradient(0, -14, 0, 14); g.addColorStop(0, '#ffe08a'); g.addColorStop(1, '#c98a1c');
+  ctx.strokeStyle = g; ctx.fillStyle = g; ctx.lineCap = 'round';
+  ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(-14, 5); ctx.lineTo(10, 5); ctx.arc(10, 10, 5, -Math.PI / 2, Math.PI / 2); ctx.lineTo(-10, 15); ctx.stroke();
+  ctx.lineWidth = 4.5; ctx.beginPath(); ctx.moveTo(-30, -2); ctx.lineTo(16, -2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(14, -4.5); ctx.quadraticCurveTo(24, -6, 32, -15); ctx.lineTo(32, 11); ctx.quadraticCurveTo(24, 2, 14, 0.5); ctx.closePath(); ctx.fill();
+  for (const vx of [-8, -1, 6]) { ctx.fillRect(vx - 2, -12, 4, 10); ctx.beginPath(); ctx.arc(vx, -13, 3, 0, TAU); ctx.fill(); }
+  ctx.fillRect(-34, -4.5, 5, 5);
+  limb(-26, -3.5, 12, -3.5, 1.2, 'rgba(255,255,255,.6)');
+}
+function harmonika() { sjaj(34, '217,43,63', 0.3); harmonikaTelo(); }
+function harmonikaTelo() {
+  for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? '#2a1830' : '#7a1a2c'; ctx.fillRect(-12 + i * 4, -16, 4, 32); }
+  ctx.fillStyle = C.crvena; rr(-30, -19, 18, 38, 3); ctx.fill();
+  ctx.fillStyle = C.krem;
+  for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) { ctx.beginPath(); ctx.arc(-26 + c * 5, -13 + r * 6.5, 1.5, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = C.crvena; rr(12, -19, 18, 38, 3); ctx.fill();
+  ctx.fillStyle = C.krem; ctx.fillRect(15, -16, 9, 32);
+  ctx.fillStyle = '#1d1828'; for (let i = 1; i < 8; i++) ctx.fillRect(15, -16 + i * 4, 9, 0.8);
+  for (let i = 0; i < 7; i++) if (i % 3 !== 2) ctx.fillRect(15, -14.5 + i * 4, 5, 2);
+  ctx.strokeStyle = C.zlato; ctx.lineWidth = 1.5; rr(-30, -19, 18, 38, 3); ctx.stroke(); rr(12, -19, 18, 38, 3); ctx.stroke();
+}
+function predmet(type, x, y, s, t, seed, v) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(Math.sin(t * 2.2 + seed) * 0.12);
+  if (type === 'nota') novcanica(v || 50, t, seed); else if (type === 'rakija') rakija(); else if (type === 'mikrofon') mikrofon(); else if (type === 'truba') truba(); else harmonika();
+  ctx.restore();
+}
+function bala(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#d4a03c'; rr(-40, -48, 80, 48, 9); ctx.fill();
+  ctx.fillStyle = '#e9bd5a'; rr(-40, -48, 80, 13, 9); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,75,20,.55)'; ctx.lineWidth = 1.4;
+  for (let i = 0; i < 14; i++) { const sx = -36 + (i * 5.3) % 70, sy = -38 + (i * 11.7) % 34; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + 6, sy + 2); ctx.stroke(); }
+  ctx.fillStyle = '#6d3f17'; ctx.fillRect(-22, -48, 4, 48); ctx.fillRect(18, -48, 4, 48);
+  ctx.restore();
+}
+function bure(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.beginPath(); ctx.moveTo(-22, -56); ctx.quadraticCurveTo(-31, -28, -22, 0); ctx.lineTo(22, 0); ctx.quadraticCurveTo(31, -28, 22, -56); ctx.closePath();
+  const g = ctx.createLinearGradient(-30, 0, 30, 0); g.addColorStop(0, '#5b3518'); g.addColorStop(0.45, '#a8703a'); g.addColorStop(1, '#5b3518'); ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = 'rgba(40,20,8,.45)'; ctx.lineWidth = 1.2;
+  for (const sx of [-12, 0, 12]) { ctx.beginPath(); ctx.moveTo(sx, -56); ctx.quadraticCurveTo(sx * 1.25, -28, sx, 0); ctx.stroke(); }
+  ctx.fillStyle = '#3a3344';
+  for (const hy of [-50, -29, -7]) { const w = 22 + 4.5 * (1 - Math.pow((hy + 28) / 28, 2)); ctx.fillRect(-w, hy - 2, 2 * w, 4); }
+  ctx.fillStyle = C.krem; rr(-15, -24, 30, 11, 2); ctx.fill();
+  ctx.fillStyle = '#5b3518'; ctx.font = '700 7.5px Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ŠLJIVA', 0, -18.3);
+  ctx.fillStyle = '#7a4a22'; ctx.beginPath(); ctx.ellipse(0, -56, 22, 4, 0, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+
+// ---------- bend ----------
+function gitara() {
+  ctx.save(); ctx.translate(2, -58); ctx.rotate(-0.55);
+  ctx.fillStyle = '#3a2416'; ctx.fillRect(-2.5, -46, 5, 40);
+  ctx.fillStyle = '#1a1210'; rr(-4, -55, 8, 10, 2); ctx.fill();
+  ctx.fillStyle = C.crvena;
+  ctx.beginPath(); ctx.ellipse(0, 2, 13, 11, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(0, -9, 9.5, 8, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = C.krem; ctx.beginPath(); ctx.ellipse(4, 0, 5, 6.5, 0.3, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#1a1210'; ctx.fillRect(-6, -4, 12, 2.5); ctx.fillRect(-6, 3, 12, 2.5);
+  ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 0.5;
+  for (const sx of [-1.5, -0.5, 0.5, 1.5]) { ctx.beginPath(); ctx.moveTo(sx, -46); ctx.lineTo(sx, 8); ctx.stroke(); }
+  ctx.restore();
+}
+function muzicar(p, x, y, s, t, ruke) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  const K = p.koza, sw = Math.sin(t * 5 + p.seed);
+  limb(-7, -44, -8, -6, 9, p.pant); limb(7, -44, 8, -6, 9, p.pant);
+  ell(-9, -3, 6.5, 3.5, '#120e18'); ell(9, -3, 6.5, 3.5, '#120e18');
+  ctx.fillStyle = p.kosulja; rr(-17, -89, 34, 49, 9); ctx.fill();
+  if (p.majica) { ctx.fillStyle = p.majica; ctx.fillRect(-6, -88, 12, 44); }
+  if (p.prsluk) {
+    ctx.fillStyle = p.prsluk;
+    ctx.beginPath(); ctx.moveTo(-17, -86); ctx.lineTo(-4, -88); ctx.lineTo(-6, -42); ctx.lineTo(-17, -44); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(17, -86); ctx.lineTo(4, -88); ctx.lineTo(6, -42); ctx.lineTo(17, -44); ctx.closePath(); ctx.fill();
+    for (let i = 0; i < 5; i++) { ell(-10, -80 + i * 8, 1.4, 1.4, C.zlato); ell(10, -80 + i * 8, 1.4, 1.4, C.zlato); }
+  }
+  ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(-17, -46, 34, 4);
+  ctx.fillStyle = K; ctx.fillRect(-3.5, -95, 7, 8);
+  ell(-11, -102, 2.5, 4, K); ell(11, -102, 2.5, 4, K);
+  ell(0, -102, 11, 12.5, K);
+  ctx.fillStyle = p.kosa; ctx.beginPath(); ctx.ellipse(0, -108, 11.6, 8, 0, Math.PI, 0); ctx.fill();
+  ctx.fillRect(-11.6, -109, 3.5, 7); ctx.fillRect(8.1, -109, 3.5, 7);
+  limb(-7.5, -106.5, -2, -104, 1.8, '#1b1020'); limb(7.5, -106.5, 2, -104, 1.8, '#1b1020');
+  ell(-4, -101, 1.5, 1.8, '#1b1020'); ell(4, -101, 1.5, 1.8, '#1b1020');
+  if (p.brkovi) { ctx.fillStyle = p.kosa; ctx.beginPath(); ctx.ellipse(-3.5, -95.8, 4, 1.7, 0.2, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.ellipse(3.5, -95.8, 4, 1.7, -0.2, 0, TAU); ctx.fill(); }
+  ell(0, -92.5, 2.4, 1.6 + Math.abs(sw) * 1.2, '#4a1420');
+  if (ruke === 'stop') {
+    const dy = sw * 1.5;
+    limb(15, -84, 25, -96, 6.5, p.kosulja); limb(25, -96, 27, -110 + dy, 6.5, p.kosulja);
+    ell(27, -116 + dy, 5, 6.5, K);
+    if (p.instr === 'gitara') {
+      limb(-14, -86, 14, -46, 2.5, '#1a1210');
+      gitara();
+      limb(-15, -84, -24, -72, 6.5, p.kosulja); limb(-24, -72, -12, -79, 6, p.kosulja); ell(-11.5, -79, 4.2, 4.2, K);
+    } else {
+      limb(-15, -84, -22, -66, 6.5, p.kosulja);
+      if (p.instr === 'harmonika') { ctx.save(); ctx.translate(-2, -62); ctx.scale(0.85, 0.85); harmonikaTelo(); ctx.restore(); }
+      ell(-22, -64, 4.2, 4.2, K);
+    }
+  } else {
+    limb(-15, -84, -20, -68, 6.5, p.kosulja); limb(15, -84, 20, -68, 6.5, p.kosulja);
+  }
+  ctx.restore();
+}
+function klavijaturisti(x, y, s, t) {
+  senka(x - 50 * s, y, s, 24); senka(x + 50 * s, y, s, 24);
+  muzicar(PAR[0], x - 50 * s, y, s, t, 'drzi'); muzicar(PAR[1], x + 50 * s, y, s, t, 'drzi');
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#16121f'; rr(-76, -76, 152, 17, 3); ctx.fill();
+  ctx.fillStyle = '#f5f0e6'; ctx.fillRect(-71, -67, 142, 7);
+  ctx.fillStyle = '#16121f';
+  for (let i = 0; i <= 28; i++) ctx.fillRect(-71 + i * 142 / 28, -67, 0.6, 7);
+  for (let i = 0; i < 28; i++) { const m = i % 7; if (m === 2 || m === 6) continue; ctx.fillRect(-71 + (i + 0.68) * 142 / 28, -67, 2.6, 4.2); }
+  ctx.fillStyle = '#5fd3ff'; ctx.fillRect(-14, -73.5, 28, 4);
+  for (const kx of [-60, -52, -44, 44, 52, 60]) ell(kx, -71.5, 2, 2, '#c9ced9');
+  for (const h of [[-70, PAR[0].koza], [-30, PAR[0].koza], [30, PAR[1].koza], [70, PAR[1].koza]]) ell(h[0], -67, 4.2, 4.2, h[1]);
+  ctx.restore();
+}
+// ---------- Žika Spanac, najveći neprijatelj ----------
+function zika(x, y, s, t) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s * 1.9, s * 1.9);
+  const K = '#e0a47c', ODELO = '#2f7d3a', ODELO_D = '#215a29', sw = Math.sin(t * 3);
+  ell(0, 0, 34, 8, 'rgba(0,0,0,.35)');
+  limb(-9, -46, -11, -6, 11, ODELO_D); limb(9, -46, 11, -6, 11, ODELO_D);
+  ell(-12, -3, 8, 4, '#120e18'); ell(12, -3, 8, 4, '#120e18');
+  ctx.fillStyle = ODELO; ctx.beginPath(); ctx.moveTo(-26, -92); ctx.quadraticCurveTo(0, -97, 26, -92); ctx.lineTo(20, -44); ctx.lineTo(-20, -44); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#f3ecdc'; ctx.beginPath(); ctx.moveTo(-7, -93); ctx.lineTo(7, -93); ctx.lineTo(0, -70); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = C.crvena; ctx.beginPath(); ctx.moveTo(-2.5, -90); ctx.lineTo(2.5, -90); ctx.lineTo(3.5, -72); ctx.lineTo(0, -66); ctx.lineTo(-3.5, -72); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = ODELO_D;
+  ctx.beginPath(); ctx.moveTo(-7, -93); ctx.lineTo(-13, -92); ctx.lineTo(-4, -62); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(7, -93); ctx.lineTo(13, -92); ctx.lineTo(4, -62); ctx.closePath(); ctx.fill();
+  ell(0, -58, 1.6, 1.6, C.zlato); ell(0, -50, 1.6, 1.6, C.zlato);
+  const ry = sw * 2;
+  limb(-24, -88, -40, -78, 9, ODELO); limb(-40, -78, -50, -92 + ry, 9, ODELO); ell(-51, -95 + ry, 6, 6, K);
+  limb(24, -88, 40, -78, 9, ODELO); limb(40, -78, 50, -92 - ry, 9, ODELO); ell(51, -95 - ry, 6, 6, K);
+  ctx.strokeStyle = '#a47a3c'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-51, -95 + ry); ctx.quadraticCurveTo(0, -40, 51, -95 - ry); ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,40,15,.5)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(-51, -95 + ry); ctx.quadraticCurveTo(0, -40, 51, -95 - ry); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = K; ctx.fillRect(-5, -100, 10, 8);
+  ell(-14, -110, 3, 5, K); ell(14, -110, 3, 5, K);
+  ell(0, -110, 14, 15, K);
+  limb(-10, -116, -3, -112, 2.6, '#1b1020'); limb(10, -116, 3, -112, 2.6, '#1b1020');
+  ell(-5.5, -109, 1.9, 2.2, '#1b1020'); ell(5.5, -109, 1.9, 2.2, '#1b1020');
+  ctx.fillStyle = '#2a1a14';
+  ctx.beginPath(); ctx.ellipse(-5, -101.5, 6.5, 2.6, 0.25, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(5, -101.5, 6.5, 2.6, -0.25, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#4a1420'; ctx.lineWidth = 1.8; ctx.beginPath(); ctx.arc(0, -94, 4, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  ctx.fillStyle = '#5b6b4a'; ctx.beginPath(); ctx.moveTo(-15, -118); ctx.lineTo(15, -118); ctx.lineTo(12, -128); ctx.quadraticCurveTo(0, -122, -12, -128); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#4a5a3a'; ctx.fillRect(-15, -120, 30, 3);
+  ctx.restore();
+}
+
+// ---------- nove prepreke ----------
+function sto(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#4a2c18'; ctx.fillRect(-34, -36, 5, 36); ctx.fillRect(29, -36, 5, 36);
+  ctx.fillStyle = '#f3ecdc'; rr(-42, -46, 84, 16, 3); ctx.fill();
+  ctx.fillStyle = C.crvena; for (let i = 0; i < 7; i += 2) ctx.fillRect(-42 + i * 12, -46, 12, 8);
+  for (let i = 1; i < 7; i += 2) ctx.fillRect(-42 + i * 12, -38, 12, 8);
+  ctx.fillStyle = '#2f6b3a'; rr(-22, -64, 8, 18, 2); ctx.fill(); ctx.fillRect(-19.5, -71, 3, 8);
+  ctx.fillStyle = '#8a4a1a'; rr(10, -60, 8, 14, 2); ctx.fill(); ctx.fillRect(12.5, -66, 3, 7);
+  ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillRect(-4, -54, 6, 8);
+  ctx.restore();
+}
+function zvucnik(x, y, s) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillStyle = '#18141f'; rr(-30, -132, 60, 132, 4); ctx.fill();
+  ctx.strokeStyle = '#3a3448'; ctx.lineWidth = 2; rr(-30, -132, 60, 132, 4); ctx.stroke();
+  ctx.fillStyle = '#2c2638'; ctx.fillRect(-30, -67, 60, 3);
+  for (const cy of [-100, -34]) { ell(0, cy, 21, 21, '#2c2638'); ell(0, cy, 15, 15, '#0e0b14'); ell(0, cy, 5, 5, '#3a3448'); }
+  ell(0, -124, 7, 4, '#2c2638');
+  ell(22, -8, 2.2, 2.2, '#5fd3ff');
+  ctx.restore();
+}
+
+function etiketa(x, y, text, bg, fg, k, naslovni) {
+  const fs = clamp(L * k * 0.15, 9, 17);
+  ctx.font = (naslovni ? '' : '700 ') + fs + 'px ' + (naslovni ? 'Bungee, Rubik, sans-serif' : 'Rubik, system-ui, sans-serif');
+  const w = ctx.measureText(text).width + fs * 1.2, h = fs * 1.6;
+  ctx.fillStyle = bg; rr(x - w / 2, y - h, w, h, h / 2); ctx.fill();
+  ctx.fillStyle = fg; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x, y - h / 2 + 0.5);
+}
+
+// ---------- okolina puta ----------
+function drawGround() {
+  const g = ctx.createLinearGradient(0, horY, 0, H);
+  g.addColorStop(0, 'rgb(74,36,96)'); g.addColorStop(0.25, '#2a1844'); g.addColorStop(1, '#1a1230');
+  ctx.fillStyle = g; ctx.fillRect(-W * 0.2, horY, W * 1.4, H - horY + H * 0.3);
+}
+function quadX(xa, xb, z0, z1) {
+  const k0 = CAM / (z0 + CAM), k1 = CAM / (z1 + CAM);
+  const y0 = horY + (feetY - horY) * k0, y1 = horY + (feetY - horY) * k1;
+  ctx.beginPath(); ctx.moveTo(W / 2 + xa * L * k0, y0 + 0.5); ctx.lineTo(W / 2 + xb * L * k0, y0 + 0.5); ctx.lineTo(W / 2 + xb * L * k1, y1); ctx.lineTo(W / 2 + xa * L * k1, y1); ctx.closePath(); ctx.fill();
+}
+function drawRoad() {
+  const seg = 2, far = 82;
+  const i0 = Math.floor((S.dist - 0.9) / seg), i1 = Math.floor((S.dist + far) / seg);
+  for (let i = i1; i >= i0; i--) {
+    let z0 = i * seg - S.dist, z1 = z0 + seg;
+    if (z1 < -0.9) continue;
+    z0 = Math.max(z0, -0.9); z1 = Math.min(z1, far);
+    if (z0 >= z1) continue;
+    const f = fogF((z0 + z1) / 2), even = (i & 1) === 0;
+    if (even) { ctx.fillStyle = 'rgba(255,255,255,' + (0.035 * (1 - f)).toFixed(3) + ')'; quadX(-16, 16, z0, z1); }
+    ctx.fillStyle = mixc(even ? [233, 216, 184] : [184, 50, 63], f); quadX(-1.62, 1.62, z0, z1);
+    ctx.fillStyle = mixc(even ? [75, 59, 85] : [66, 51, 73], f); quadX(-1.5, 1.5, z0, z1);
+    if (((i % 3) + 3) % 3 === 0) { ctx.fillStyle = 'rgba(255,242,218,' + (0.42 * (1 - f)).toFixed(3) + ')'; quadX(-0.52, -0.48, z0, z1); quadX(0.48, 0.52, z0, z1); }
+  }
+  const g = ctx.createLinearGradient(0, horY - 1, 0, horY + (feetY - horY) * 0.09);
+  g.addColorStop(0, 'rgba(74,36,96,1)'); g.addColorStop(1, 'rgba(74,36,96,0)');
+  ctx.fillStyle = g; ctx.fillRect(-W * 0.2, horY - 1, W * 1.4, (feetY - horY) * 0.09 + 1);
+}
+function drawSkyline() {
+  const off = -120 - S.px * 14, y = horY - skylineH + 1;
+  if (S.skyPrev && S.skyFade < 1 && skylines[S.skyPrev]) { ctx.globalAlpha = 1 - S.skyFade; ctx.drawImage(skylines[S.skyPrev], off, y, W + 240, skylineH); }
+  ctx.globalAlpha = (S.skyPrev && S.skyFade < 1) ? S.skyFade : 1;
+  if (skylines[S.skyCur]) ctx.drawImage(skylines[S.skyCur], off, y, W + 240, skylineH);
+  ctx.globalAlpha = 1;
+}
+function drawReflektori() {
+  let a = 0;
+  if (S.skyCur === 'arena') a = S.skyPrev ? S.skyFade : 1; else if (S.skyPrev === 'arena') a = 1 - S.skyFade;
+  if (a <= 0) return;
+  const bx = W / 2 - S.px * 14, by = horY - skylineH * 0.3, len = horY * 1.2;
+  for (let i = 0; i < 3; i++) {
+    const ang = -Math.PI / 2 + Math.sin(S.t * 0.6 + i * 2.1) * 0.6, sp = 0.05;
+    const g = ctx.createLinearGradient(bx, by, bx + Math.cos(ang) * len, by + Math.sin(ang) * len);
+    g.addColorStop(0, 'rgba(255,236,200,' + (0.3 * a).toFixed(3) + ')'); g.addColorStop(1, 'rgba(255,236,200,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.cos(ang - sp) * len, by + Math.sin(ang - sp) * len); ctx.lineTo(bx + Math.cos(ang + sp) * len, by + Math.sin(ang + sp) * len); ctx.closePath(); ctx.fill();
+  }
+}
+function collectProps(list) {
+  const D = S.dist, FAR = 84;
+  const TS = 5;
+  for (let i = Math.floor((D - 3) / TS); i <= Math.floor((D + FAR) / TS); i++) {
+    const zb = i * TS - D;
+    if (hash(i * 3.1) > 0.22) { const z = zb + hash(i * 1.9) * 2; if (z > -2.5 && z < FAR) list.push({ k:'drvo', z, x:-(2.8 + hash(i * 7.7) * 1.9), h:2.8 + hash(i * 5.3) * 2.2 }); }
+    if (hash(i * 4.7 + 1) > 0.22) { const z = zb + hash(i * 2.3) * 2; if (z > -2.5 && z < FAR) list.push({ k:'drvo', z, x:2.8 + hash(i * 8.1) * 1.9, h:2.8 + hash(i * 6.1) * 2.2 }); }
+  }
+  const PS = 10;
+  for (let i = Math.floor((D - 3) / PS); i <= Math.floor((D + FAR) / PS); i++) {
+    const z = i * PS - D; if (z < -2.5) continue;
+    for (const sx of [-1.95, 1.95]) { list.push({ k:'stub', z, x:sx }); if (z > -1.2) list.push({ k:'zica', z:z + 0.01, z2:z + PS, x:sx, i }); }
+  }
+  const KS = 19;
+  for (let i = Math.floor((D - 3) / KS); i <= Math.floor((D + FAR) / KS); i++) {
+    if (hash(i * 9.3) < 0.45) continue;
+    const z = i * KS - D + hash(i * 2.1) * 6; if (z < -2.5 || z > FAR) continue;
+    list.push({ k:'kuca', z, x:(hash(i * 5.7) < 0.5 ? -1 : 1) * (4.4 + hash(i * 3.9) * 1.2), i });
+  }
+  const ZS = 250;
+  for (let i = Math.max(1, Math.floor((D - 3) / ZS)); i <= Math.floor((D + FAR) / ZS); i++) {
+    const m = i * ZS; if (ETAPE.some(e => Math.abs(e.m - m) < 60)) continue;
+    const z = m - D; if (z < -2.5 || z > FAR) continue;
+    list.push({ k:'znak', z, m });
+  }
+  for (const lk of LUKOVI) { const z = lk.m - D; if (z > -2.5 && z < FAR) list.push({ k:'luk', z, text:lk.text }); }
+}
+function drvo(p) {
+  const b = proj(p.x, p.z, 0), sc = L * b.k, f = fogF(p.z) * 0.9;
+  ctx.globalAlpha = fadeA(p.z);
+  ctx.fillStyle = mixc([18, 10, 32], f);
+  ctx.fillRect(b.x - 0.035 * sc, b.y - 0.6 * sc, 0.07 * sc, 0.6 * sc);
+  ctx.beginPath(); ctx.ellipse(b.x, b.y - p.h * 0.58 * sc, 0.36 * sc, p.h * 0.44 * sc, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = mixc([44, 26, 70], f); ctx.beginPath(); ctx.ellipse(b.x - 0.1 * sc * Math.sign(p.x), b.y - p.h * 0.62 * sc, 0.14 * sc, p.h * 0.34 * sc, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function stub(p) {
+  const b = proj(p.x, p.z, 0), t = proj(p.x, p.z, 2.3), sc = L * b.k;
+  ctx.globalAlpha = fadeA(p.z);
+  ctx.fillStyle = mixc([36, 24, 52], fogF(p.z));
+  ctx.fillRect(b.x - 0.032 * sc, t.y, 0.064 * sc, b.y - t.y);
+  ctx.fillRect(b.x - 0.12 * sc, t.y, 0.24 * sc, 0.04 * sc);
+  ctx.globalAlpha = 1;
+}
+function zica(p) {
+  const A = proj(p.x, p.z, 2.25), B = proj(p.x, p.z2, 2.25), M = proj(p.x, (p.z + p.z2) / 2, 1.85);
+  const Qx = 2 * M.x - (A.x + B.x) / 2, Qy = 2 * M.y - (A.y + B.y) / 2;
+  const a = fadeA(p.z2);
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = mixc([30, 20, 44], fogF(p.z)); ctx.lineWidth = Math.max(0.8, 0.012 * L * A.k);
+  ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.quadraticCurveTo(Qx, Qy, B.x, B.y); ctx.stroke();
+  for (let j = 0; j < 5; j++) {
+    const t = 0.1 + j * 0.2, it = 1 - t;
+    const x = it * it * A.x + 2 * it * t * Qx + t * t * B.x, y = it * it * A.y + 2 * it * t * Qy + t * t * B.y;
+    const k = A.k * it + B.k * t, r = Math.max(0.8, 0.045 * L * k);
+    const col = SIJ[(((p.i * 5 + j) % 5) + 5) % 5], tw = 0.6 + 0.4 * Math.sin(S.t * 3 + j * 1.3 + p.i);
+    ctx.globalAlpha = a * 0.22 * tw; ell(x, y, r * 3.2, r * 3.2, col);
+    ctx.globalAlpha = a; ell(x, y, r, r, col);
+  }
+  ctx.globalAlpha = 1;
+}
+function kuca(p) {
+  const b = proj(p.x, p.z, 0), sc = L * b.k, f = fogF(p.z);
+  ctx.globalAlpha = fadeA(p.z);
+  const w = 1.3 * sc, h = 0.8 * sc;
+  ctx.fillStyle = mixc([40, 26, 62], f); ctx.fillRect(b.x - w / 2, b.y - h, w, h);
+  ctx.fillStyle = mixc([96, 32, 44], f); ctx.beginPath(); ctx.moveTo(b.x - w * 0.62, b.y - h); ctx.lineTo(b.x, b.y - h - 0.55 * sc); ctx.lineTo(b.x + w * 0.62, b.y - h); ctx.closePath(); ctx.fill();
+  if (hash(p.i * 1.3) < 0.8) {
+    ctx.fillStyle = 'rgba(255,196,96,' + (1 - f * 0.6).toFixed(2) + ')';
+    ctx.fillRect(b.x - w * 0.32, b.y - h * 0.68, w * 0.2, h * 0.3); ctx.fillRect(b.x + w * 0.12, b.y - h * 0.68, w * 0.2, h * 0.3);
+    ctx.globalAlpha *= 0.16; ell(b.x, b.y - h * 0.55, w * 0.6, h * 0.45, '#ffc460');
+  }
+  ctx.globalAlpha = 1;
+}
+function znak(p) {
+  const nx = ETAPE.find(e => e.m > p.m);
+  const b = proj(2.45, p.z, 0), t = proj(2.45, p.z, 1.7), sc = L * b.k, f = fogF(p.z);
+  ctx.globalAlpha = fadeA(p.z);
+  ctx.fillStyle = mixc([150, 150, 160], f); ctx.fillRect(b.x - 0.025 * sc, t.y, 0.05 * sc, b.y - t.y);
+  const bw = 1.05 * sc, bh = 0.5 * sc, bx = b.x - bw / 2, by = t.y - bh * 0.4;
+  ctx.fillStyle = mixc([31, 79, 154], f); rr(bx, by, bw, bh, 0.05 * sc); ctx.fill();
+  ctx.strokeStyle = mixc([240, 240, 240], f); ctx.lineWidth = Math.max(1, 0.025 * sc); rr(bx + 0.03 * sc, by + 0.03 * sc, bw - 0.06 * sc, bh - 0.06 * sc, 0.04 * sc); ctx.stroke();
+  if (bw > 46) {
+    ctx.fillStyle = mixc([255, 255, 255], f); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + (bh * 0.3) + 'px Rubik, sans-serif'; ctx.fillText(nx ? nx.kratko.toUpperCase() : 'BIS!', b.x, by + bh * 0.36);
+    ctx.font = '500 ' + (bh * 0.24) + 'px Rubik, sans-serif'; ctx.fillText(nx ? fmt(nx.m - p.m) + ' m' : 'svetska turneja', b.x, by + bh * 0.7);
+  }
+  ctx.globalAlpha = 1;
+}
+function luk(p) {
+  const z = p.z, f = fogF(z), a = fadeA(z), b = proj(0, z, 0), sc = L * b.k;
+  if (sc < 2) return;
+  ctx.globalAlpha = a;
+  const xl = W / 2 - 1.85 * sc, xr = W / 2 + 1.85 * sc;
+  const yTop = proj(0, z, 2.9).y, yB0 = proj(0, z, 2.85).y, yB1 = proj(0, z, 2.28).y, pw = 0.11 * sc;
+  ctx.fillStyle = mixc([70, 44, 30], f);
+  ctx.fillRect(xl - pw / 2, yTop, pw, b.y - yTop); ctx.fillRect(xr - pw / 2, yTop, pw, b.y - yTop);
+  for (let j = 0; j < 9; j++) {
+    const yy = b.y - (b.y - yTop) * (j / 9), col = mixc(j % 2 ? [38, 120, 70] : [52, 150, 84], f);
+    ell(xl + (j % 2 ? -1 : 1) * pw * 0.35, yy, pw * 0.7, pw * 0.55, col); ell(xr + (j % 2 ? 1 : -1) * pw * 0.35, yy, pw * 0.7, pw * 0.55, col);
+  }
+  ctx.fillStyle = mixc([200, 36, 58], f * 0.85); ctx.fillRect(xl - pw, yB0, xr - xl + 2 * pw, yB1 - yB0);
+  const bt = Math.max(1, 0.035 * sc); ctx.fillStyle = mixc([244, 183, 59], f * 0.85);
+  ctx.fillRect(xl - pw, yB0, xr - xl + 2 * pw, bt); ctx.fillRect(xl - pw, yB1 - bt, xr - xl + 2 * pw, bt);
+  const bw = (xr - xl) * 0.92, bh = yB1 - yB0;
+  if (bh > 7) {
+    let fs = bh * 0.52; ctx.font = fs + 'px Bungee, Rubik, sans-serif';
+    const tw = ctx.measureText(p.text).width; if (tw > bw) { fs *= bw / tw; ctx.font = fs + 'px Bungee, Rubik, sans-serif'; }
+    ctx.fillStyle = mixc([255, 242, 218], f * 0.85); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(p.text, W / 2, (yB0 + yB1) / 2 + fs * 0.06);
+  }
+  for (let j = 0; j <= 12; j++) {
+    const x = xl + (xr - xl) * j / 12, r = Math.max(0.8, 0.04 * sc), col = SIJ[j % 5];
+    ctx.globalAlpha = a * 0.25; ell(x, yB0 - r * 0.5, r * 3, r * 3, col);
+    ctx.globalAlpha = a; ell(x, yB0 - r * 0.5, r, r, col);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- objekti na putu ----------
+function drawObj(o, z) {
+  const a = fadeA(z); if (a <= 0) return;
+  let lane = o.lane, yOff = 0, rot = 0, alpha = a;
+  if (o.knock) { const t = o.knock.t; lane += o.knock.dir * t * 1.6; yOff = Math.max(0, 2.2 * t - 2.2 * t * t); rot = o.knock.dir * t * 6; alpha *= clamp(1 - t / 0.9, 0, 1); }
+  const b = proj(lane, z, 0), s = L * b.k / 100;
+  if (s * 100 < 1.5) return;
+  ctx.globalAlpha = alpha;
+  const T = S.t;
+  if (o.type === 'pevacica') {
+    senka(b.x, b.y, s, 26); pevacica(o.p, b.x, b.y, s, T);
+    if (L * b.k > 18) etiketa(b.x, b.y - (o.p.vestica ? 138 : 116) * s, o.p.ime, 'rgba(23,13,43,.85)', C.zlato, b.k, false);
+  } else if (o.type === 'bend') {
+    senka(b.x, b.y, s, 26); muzicar(o.p, b.x, b.y, s, T, 'stop');
+    if (L * b.k > 18) etiketa(b.x, b.y - 130 * s, o.p.ime, '#1f4f9a', '#ffffff', b.k, false);
+  } else if (o.type === 'klavijaturisti') {
+    klavijaturisti(b.x, b.y, s, T);
+    if (L * b.k > 18) { etiketa(b.x - 50 * s, b.y - 122 * s, PAR[0].ime, '#1f4f9a', '#ffffff', b.k, false); etiketa(b.x + 50 * s, b.y - 122 * s, PAR[1].ime, '#1f4f9a', '#ffffff', b.k, false); }
+  } else if (o.type === 'zika') {
+    zika(b.x, b.y, s, T);
+    if (L * b.k > 14) etiketa(b.x, b.y - 258 * s, 'ŽIKA SPANAC', '#2f7d3a', '#ffffff', b.k, true);
+  } else if (o.type === 'diva') {
+    senka(b.x, b.y, s, 28); diva(o.p, b.x, b.y, s, T);
+    if (L * b.k > 18) etiketa(b.x, b.y - 148 * s, 'VERICA', C.ruza, '#2a0618', b.k, true);
+  } else if (PREPREKE[o.type]) {
+    senka(b.x, b.y, s, o.type === 'bala' || o.type === 'sto' ? 44 : 30);
+    const fn = PREPREKE[o.type];
+    if (o.knock) { const p2 = proj(lane, z, yOff); ctx.save(); ctx.translate(p2.x, p2.y); ctx.rotate(rot); ctx.translate(-p2.x, -p2.y); fn(p2.x, p2.y, s); ctx.restore(); }
+    else fn(b.x, b.y, s);
+  } else {
+    const bob = Math.sin(T * 4 + o.seed) * 0.03;
+    ctx.globalAlpha = alpha * (o.y > 0.6 ? 0.5 : 1); senka(b.x, b.y, s, 14); ctx.globalAlpha = alpha;
+    const p = proj(lane, z, o.y + bob);
+    predmet(o.type, p.x, p.y, s, T, o.seed, o.v);
+  }
+  ctx.globalAlpha = 1;
+}
+function crtajIgraca() {
+  const b = proj(S.px, 0, 0), p = proj(S.px, 0, S.jy), s = L / 100;
+  const sh = 1 - Math.min(0.6, S.jy * 0.45);
+  ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.beginPath(); ctx.ellipse(b.x, b.y, 30 * s * sh, 8 * s * sh, 0, 0, TAU); ctx.fill();
+  ctx.globalAlpha = (S.inv > 0 && Math.floor(S.inv * 10) % 2 === 0) ? 0.45 : 1;
+  const zaljubljen = S.mode === 'love' || S.mode === 'over';
+  const lean = (S.lane - S.px) * 0.18 + (S.stumble > 0 ? 0.22 * Math.sin(S.stumble * 20) : 0);
+  laza(p.x, p.y, s, S.ph, { air:S.air, stop:zaljubljen, love:zaljubljen, lean });
+  if (S.sputan > 0) {
+    ctx.strokeStyle = '#a47a3c'; ctx.lineWidth = Math.max(2, 3 * s);
+    for (const yy of [-58, -74]) { ctx.beginPath(); ctx.ellipse(p.x, p.y + yy * s, 29 * s, 6 * s, 0, 0, TAU); ctx.stroke(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- efekti ----------
+function fxTekst(text, col, size) {
+  const p = proj(S.px, 0, S.jy);
+  let n = 0; for (const f of S.fx) if (f.k === 't' && f.max - f.life < 0.35) n++;
+  S.fx.push({ k:'t', text, col, size:size || 1, x:p.x, y:p.y - L * 1.4 - n * L * 0.22, vy:-L * 0.7, life:1.1, max:1.1 });
+}
+function fxPrasak(n, cols, oblik, jako) {
+  const p = proj(S.px, 0, S.jy);
+  for (let i = 0; i < n; i++) S.fx.push({ k:'p', oblik, col:pick(cols), x:p.x + (Math.random() - 0.5) * L * 0.3, y:p.y - L * 0.7, vx:(Math.random() - 0.5) * L * (jako ? 4 : 2.6), vy:-L * (0.8 + Math.random() * 1.6), g:oblik === 'srce' ? -L * 0.2 : L * 3.2, life:0.7 + Math.random() * 0.5, max:1.2, r:L * (0.035 + Math.random() * 0.04) });
+}
+function updateFx(dt) {
+  for (const f of S.fx) {
+    f.life -= dt;
+    if (f.k === 't') { f.y += f.vy * dt; f.vy *= Math.pow(0.1, dt); }
+    else { f.vy += f.g * dt; f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= Math.pow(0.5, dt); }
+  }
+  S.fx = S.fx.filter(f => f.life > 0);
+}
+function drawFx() {
+  for (const f of S.fx) {
+    ctx.globalAlpha = clamp(f.life / f.max * 1.5, 0, 1);
+    if (f.k === 't') {
+      const fs = Math.max(14, L * 0.15) * f.size;
+      ctx.font = fs + 'px Bungee, Rubik, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const tw = ctx.measureText(f.text).width, x = clamp(f.x, tw / 2 + 10, W - tw / 2 - 10);
+      ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(3, fs * 0.2); ctx.strokeStyle = 'rgba(23,13,43,.92)'; ctx.strokeText(f.text, x, f.y);
+      ctx.fillStyle = f.col; ctx.fillText(f.text, x, f.y);
+    } else if (f.oblik === 'srce') srce(f.x, f.y, f.r * 1.4, f.col);
+    else iskra(f.x, f.y, f.r * 1.3, f.col);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- šabloni na putu ----------
+function addObj(type, lane, z, y, p) { const rv = Math.random(); S.objs.push({ type, lane, z, y:y || 0, p:p || null, v:type === 'nota' ? (rv < 0.7 ? 50 : rv < 0.95 ? 100 : 500) : 0, w:type === 'klavijaturisti' || type === 'zika' ? 1 : 0.5, seed:Math.random() * 10, done:false, gone:false, knock:null }); }
+const PREPREKE = { bala, bure, sto, zvucnik };
+function novaPevacica() {
+  const r = Math.random();
+  const ime = r < 0.6 ? 'Maja' : r < 0.82 ? 'Bogdana' : 'Jelena';
+  const p = { ime, kosa:pick(KOSE), haljina:pick(HALJINE), koza:pick(KOZE), cipele:pick(CIPELE), seed:Math.random() * 10, vestica:false };
+  if (ime === 'Verica') Object.assign(p, { vestica:true, kosa:'#14101c', haljina:'#4a2a6e', cipele:'#1a1020' });
+  if (ime === 'Maja') p.kosa = '#f1d27a';
+  return p;
+}
+function novaDiva() { return { seed:Math.random() * 10 }; }
+function pickItem() { const r = Math.random(); return r < 0.4 ? 'rakija' : r < 0.65 ? 'mikrofon' : r < 0.85 ? 'truba' : 'harmonika'; }
+const prepreka = () => pick(['bala', 'bure', 'sto']);
+function patNote(at) {
+  let lane = pick(LANES); const n = ri(6, 9), zig = Math.random() < 0.35;
+  for (let i = 0; i < n; i++) { if (zig && i === Math.floor(n / 2)) lane = clamp(lane + pick([-1, 1]), -1, 1); addObj('nota', lane, at + i * 2.2, 0.32); }
+  return n * 2.2;
+}
+function patPreskok(at) {
+  const pl = shuffle(LANES).slice(0, ri(1, 2)), z = at + 6;
+  pl.forEach(l => addObj(prepreka(), l, z, 0));
+  const l = pl[0];
+  for (let i = 0; i < 7; i++) { const dz = (i - 3) * 1.3; addObj('nota', l, z + dz, 0.32 + 1.13 * Math.max(0, 1 - Math.pow(dz / 4.2, 2))); }
+  const free = LANES.filter(x => pl.indexOf(x) < 0);
+  if (free.length && Math.random() < 0.6) addObj(pickItem(), pick(free), z, 0.32);
+  return 12;
+}
+function patStvari(at) { const n = ri(2, 4); for (let i = 0; i < n; i++) addObj(pickItem(), pick(LANES), at + i * 4.5, 0.32); return n * 4.5; }
+function patPevacica(at) {
+  const l = pick(LANES);
+  for (let i = 0; i < 4; i++) addObj('nota', l, at + i * 2, 0.32);
+  addObj('pevacica', l, at + 10, 0, novaPevacica());
+  if (Math.random() < 0.5) addObj(pickItem(), pick(LANES.filter(x => x !== l)), at + 10, 0.32);
+  return 12;
+}
+function patDiva(at, lvl) {
+  const d = pick(LANES), others = LANES.filter(x => x !== d), v = Math.random();
+  if (v < 0.4) {
+    for (let i = 0; i < 4; i++) addObj('nota', d, at + i * 2.2, 0.32);
+    addObj('diva', d, at + 15, 0, novaDiva());
+    addObj('pevacica', pick(others), at + 15, 0, novaPevacica());
+  } else if (v < 0.72 || lvl < 0.35) {
+    addObj('diva', d, at + 12, 0, novaDiva());
+    const sh = shuffle(others);
+    addObj(prepreka(), sh[0], at + 12, 0);
+    for (let i = 0; i < 4; i++) addObj('nota', sh[1], at + 6 + i * 2.2, 0.32);
+  } else {
+    const free = pick(LANES);
+    LANES.filter(x => x !== free).forEach(l => addObj('diva', l, at + 14, 0, novaDiva()));
+    if (Math.random() < 0.5) addObj('bala', free, at + 14, 0); else addObj(pickItem(), free, at + 14, 0.32);
+  }
+  return 18;
+}
+function patMesano(at, lvl) {
+  const rows = ri(2, 3);
+  for (let r = 0; r < rows; r++) {
+    const z = at + r * 7; let visoki = 0;
+    for (const l of shuffle(LANES)) {
+      const q = Math.random();
+      if (q < 0.34 + lvl * 0.12) {
+        if (visoki < 2 && Math.random() < 0.25) { addObj('zvucnik', l, z, 0); visoki++; }
+        else addObj(prepreka(), l, z, 0);
+      }
+      else if (q < 0.6) addObj('nota', l, z, 0.32);
+      else if (q < 0.7) addObj(pickItem(), l, z, 0.32);
+    }
+  }
+  return rows * 7;
+}
+function patZvucnici(at) {
+  const free = pick(LANES), z = at + 8;
+  LANES.filter(l => l !== free).forEach((l, i) => { if (i === 0 || Math.random() < 0.7) addObj('zvucnik', l, z, 0); });
+  if (Math.random() < 0.5) addObj(prepreka(), free, z, 0);
+  for (let i = 0; i < 4; i++) addObj('nota', free, at + i * 2.2, 0.32);
+  return 12;
+}
+function patBend(at) {
+  const v = Math.random();
+  if (v < 0.36) {
+    const l = pick(LANES), ost = shuffle(LANES.filter(x => x !== l));
+    addObj('rakija', l, at, 0.32); addObj('rakija', l, at + 3, 0.32);
+    addObj('bend', l, at + 12, 0, BEND.vasa);
+    for (let i = 0; i < 4; i++) addObj('nota', ost[0], at + 6 + i * 2.2, 0.32);
+  } else if (v < 0.7) {
+    const l = pick(LANES), ost = shuffle(LANES.filter(x => x !== l));
+    addObj('bend', l, at + 10, 0, BEND.miljan);
+    addObj('pevacica', ost[0], at + 10, 0, novaPevacica());
+    if (Math.random() < 0.5) addObj(pickItem(), ost[1], at + 10, 0.32);
+  } else {
+    const free = pick([-1, 1]);
+    addObj('klavijaturisti', free === -1 ? 0.5 : -0.5, at + 12, 0, PAR);
+    for (let i = 0; i < 5; i++) addObj('nota', free, at + 4 + i * 2.2, 0.32);
+  }
+  return 16;
+}
+function patZika(at) {
+  const c = pick([-0.5, 0.5]), free = c < 0 ? 1 : -1;
+  addObj('zika', c, at + 18, 0, null);
+  for (let i = 0; i < 6; i++) addObj('nota', free, at + 4 + i * 2.2, 0.32);
+  addObj('rakija', free, at + 18, 0.32);
+  S.zikaPoslednji = at;
+  return 24;
+}
+function spawnPattern() {
+  const at = S.next, lvl = clamp(S.dist / 3500, 0, 1);
+  const divaSansa = at > 160 ? 0.12 + lvl * 0.2 : 0, bendSansa = at > 90 ? 0.16 : 0;
+  const r = Math.random();
+  let len;
+  if (at > 350 && at - S.zikaPoslednji > 700 && Math.random() < 0.08) len = patZika(at);
+  else if (r < divaSansa) len = patDiva(at, lvl);
+  else if (r < divaSansa + bendSansa) len = patBend(at);
+  else {
+    const q = Math.random();
+    len = q < 0.16 ? patPevacica(at) : q < 0.36 ? patPreskok(at) : q < 0.52 ? patZvucnici(at) : q < 0.66 ? patNote(at) : q < 0.78 ? patStvari(at) : patMesano(at, lvl);
+  }
+  S.next = at + len + rnd(7, 13) * (1 - lvl * 0.3);
+}
+
+// ---------- pravila ----------
+function raspon(o) {
+  if (o.type === 'bala' || o.type === 'bure' || o.type === 'sto') return [0, 0.48];
+  if (o.type === 'zvucnik' || o.type === 'bend' || o.type === 'klavijaturisti') return [0, 1.4];
+  if (o.type === 'zika') return [0, 2.5];
+  if (o.type === 'pevacica') return [0, 1.05];
+  if (o.type === 'diva') return [0, 1.35];
+  return [o.y - 0.2, o.y + 0.2];
+}
+const mnozilac = () => 1 + Math.min(4, Math.floor(S.combo / 8));
+function uhvati(o) {
+  o.done = true;
+  if (o.type === 'diva') { zaljubiSe(o); return; }
+  if (o.type === 'zika') {
+    if (S.inv > 0) return;
+    S.sputan = 1.5; S.inv = 2.6; S.shake = 0.5; S.combo = 0; S.comboT = 0; S.drunk = 0;
+    S.air = false; S.jy = 0; S.vy = 0;
+    S.score = Math.max(0, S.score - 300); S.counts.zika++;
+    o.drzi = true; o.z = S.dist + 2.2;
+    fxTekst('Žika te sputao! −300', '#8fe08a', 1.05); sfxZika();
+    return;
+  }
+  if (o.type === 'bend' || o.type === 'klavijaturisti') {
+    if (S.inv > 0) return;
+    S.speed *= 0.45; S.combo = 0; S.comboT = 0; S.inv = 1.2; S.shake = 0.3; S.stumble = 0.45; S.drunk = 0;
+    S.score = Math.max(0, S.score - 100); S.counts.bend++;
+    const rec = o.type === 'klavijaturisti' ? 'Milan i Novak: Na probu!' : o.p.ime === 'Vasa' ? 'Vasa: Dosta rakije!' : 'Miljan: Bez ljubavi!';
+    fxTekst(rec, '#9cc8ff', 0.95); fxTekst('−100', '#ff7a7a', 0.9); sfxBend();
+    return;
+  }
+  if (PREPREKE[o.type]) {
+    if (S.inv > 0) return;
+    if (o.type !== 'zvucnik') o.knock = { t:0, dir:Math.random() < 0.5 ? -1 : 1 };
+    S.speed *= 0.5; S.combo = 0; S.comboT = 0; S.inv = 1; S.shake = 0.35; S.stumble = 0.45;
+    S.score = Math.max(0, S.score - 50);
+    fxTekst(o.type === 'zvucnik' ? 'Bum! −50' : 'Joj! −50', '#ff7a7a', 1.1); sfxPrepreka();
+    return;
+  }
+  o.gone = true;
+  const stari = mnozilac();
+  S.combo++; S.comboT = 2.4;
+  const m = mnozilac(), pts = (o.type === 'nota' ? o.v / 10 : BOD[o.type]) * m;
+  S.score += pts; S.counts[o.type]++;
+  if (m > stari) fxTekst('Kolo ×' + m, C.krem, 0.9);
+  switch (o.type) {
+    case 'nota': {
+      const nv = NOVAC[o.v] || NOVAC[50];
+      S.evri += o.v;
+      fxTekst('+' + o.v + ' €', nv.tekst, o.v === 500 ? 1.05 : 0.75);
+      fxPrasak(o.v === 500 ? 12 : 4, [nv.tekst, nv.boje[0]], 'iskra', o.v === 500);
+      sfxNota(); if (o.v === 500) sfxPara();
+      break;
+    }
+    case 'rakija':
+      if (S.counts.rakija % 5 === 0) { S.drunk = 4.5; fxTekst('Živeli! Put se ljulja…', C.zlato, 1); }
+      else fxTekst('Živeli! +' + pts, C.zlato, 1);
+      fxPrasak(8, [C.zlato, '#fff3c4'], 'iskra'); sfxRakija(); break;
+    case 'mikrofon': fxTekst('Mikrofon +' + pts, C.krem, 1); fxPrasak(8, [C.krem, '#cfd4de'], 'iskra'); sfxMikrofon(); break;
+    case 'truba': fxTekst('Truba +' + pts, C.zlato, 1); fxPrasak(8, [C.zlato, '#ffe08a'], 'iskra'); sfxTruba(); break;
+    case 'harmonika': fxTekst('Harmonika +' + pts, '#ff8b8b', 1); fxPrasak(8, [C.crvena, C.zlato], 'iskra'); sfxHarmonika(); break;
+    case 'pevacica': fxTekst('Duet sa ' + instr(o.p.ime) + '! +' + pts, C.krem, 1.05); fxPrasak(12, [C.zlato, C.krem, '#ff9fcb'], 'iskra', true); sfxPevacica(); break;
+  }
+}
+function zaljubiSe(o) {
+  S.mode = 'love'; S.loveT = 0; S.heartT = 0; S.divaO = o;
+  S.lane = Math.round(S.px); S.px = S.lane; o.lane = S.lane; o.z = S.dist + 1.5;
+  S.objs = S.objs.filter(x => x === o || x.z - S.dist > 6 || x.z - S.dist < -1);
+  baner('Laza se zaljubio u Vericu!', 'Začarala ga je veštica', true);
+  fxPrasak(14, [C.ruza, '#ff8fc4', '#ffd1e6'], 'srce', true);
+  sfxDiva();
+}
+function onStage() {
+  const e = ETAPE[S.stage];
+  if (e.nebo !== S.skyCur) { S.skyPrev = S.skyCur; S.skyCur = e.nebo; S.skyFade = 0; }
+  if (S.stage === ETAPE.length - 1) baner(e.ime, 'Poslednja stanica, bis!', false);
+  else baner(e.ime, 'Nova stanica', false);
+  osveziTacke(); sfxEtapa();
+}
+
+// ---------- petlja ----------
+function update(dt) {
+  S.t += dt;
+  if (S.mode === 'menu') {
+    S.speed = 9; S.dist += S.speed * dt; S.ph += dt * S.speed * 0.62;
+  } else if (S.mode === 'play') {
+    const cilj = Math.min(14 + S.dist / 120, 32);
+    S.speed += (cilj - S.speed) * Math.min(1, dt * 1.2);
+    if (S.sputan > 0) {
+      S.sputan -= dt; S.speed = 0;
+      if (S.sputan <= 0) S.objs.forEach(o => { if (o.drzi) { o.drzi = false; o.odlazi = true; } });
+    }
+    const prev = S.dist;
+    S.dist += S.speed * dt; S.ph += dt * Math.min(S.speed, 24) * 0.62;
+    const dx = S.lane - S.px, step = 9 * dt;
+    S.px = Math.abs(dx) <= step ? S.lane : S.px + Math.sign(dx) * step;
+    if (S.air) {
+      S.vy -= G * dt; S.jy += S.vy * dt;
+      if (S.jy <= 0) { S.jy = 0; S.vy = 0; S.air = false; }
+    }
+    while (S.next < S.dist + 86) spawnPattern();
+    for (const o of S.objs) {
+      if (o.done) continue;
+      const r0 = o.z - prev, r1 = o.z - S.dist;
+      if (r1 > 0.45 || r0 < -0.45) continue;
+      if (Math.abs(o.lane - S.px) > o.w) continue;
+      const ext = raspon(o);
+      if (S.jy > ext[1] || S.jy + 1.0 < ext[0]) continue;
+      uhvati(o);
+      if (S.mode !== 'play') break;
+    }
+    for (const o of S.objs) if (o.knock) { o.knock.t += dt; o.z = S.dist + 0.2 + o.knock.t * 2; if (o.knock.t > 0.9) o.gone = true; }
+    for (const o of S.objs) {
+      if (o.type !== 'zika') continue;
+      if (!o.upozoren && o.z - S.dist < 62) { o.upozoren = true; baner('Žika Spanac!', 'Pazi, najveći neprijatelj', false); sfxUpozorenje(); }
+      if (o.odlazi) o.lane += (o.lane < 0 ? -1 : 1) * 5 * dt;
+    }
+    S.objs = S.objs.filter(o => !o.gone && o.z - S.dist > -3);
+    if (S.comboT > 0) { S.comboT -= dt; if (S.comboT <= 0) S.combo = 0; }
+    S.inv = Math.max(0, S.inv - dt); S.shake = Math.max(0, S.shake - dt);
+    S.drunk = Math.max(0, S.drunk - dt); S.stumble = Math.max(0, S.stumble - dt);
+    while (S.stage < ETAPE.length - 1 && S.dist >= ETAPE[S.stage + 1].m) { S.stage++; onStage(); }
+  } else if (S.mode === 'love' || S.mode === 'over') {
+    S.speed *= Math.max(0, 1 - dt * 6); S.dist += S.speed * dt;
+    if (S.divaO) S.divaO.z = S.dist + 1.5;
+    if (S.air) { S.vy -= G * dt; S.jy += S.vy * dt; if (S.jy <= 0) { S.jy = 0; S.vy = 0; S.air = false; } }
+    S.shake = Math.max(0, S.shake - dt); S.drunk = Math.max(0, S.drunk - dt * 2);
+    S.heartT -= dt;
+    if (S.heartT <= 0) { S.heartT = S.mode === 'love' ? 0.07 : 0.3; fxPrasak(1, [C.ruza, '#ff8fc4', '#ffd1e6'], 'srce'); }
+    if (S.mode === 'love') { S.loveT += dt; if (S.loveT > 2.1) zavrsi(); }
+  }
+  S.skyFade = Math.min(1, S.skyFade + dt * 0.5);
+  updateFx(dt);
+}
+
+function render() {
+  ctx = mainCtx;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = '#0b0620'; ctx.fillRect(0, 0, W, H);
+  ctx.save();
+  let tilt = 0, zoom = 1, sx = 0, sy = 0;
+  if (!MIRNO) {
+    if (S.drunk > 0) { const a = Math.min(1, S.drunk / 1.2); tilt = Math.sin(S.t * 1.6) * 0.05 * a; zoom = 1 + 0.08 * a; }
+    if (S.shake > 0) { sx = (Math.random() - 0.5) * S.shake * 28; sy = (Math.random() - 0.5) * S.shake * 20; }
+  }
+  ctx.translate(W / 2 + sx, H * 0.62 + sy); ctx.rotate(tilt); ctx.scale(zoom, zoom); ctx.translate(-W / 2, -H * 0.62);
+  if (skyCv) ctx.drawImage(skyCv, 0, 0, W, horY + 2);
+  drawReflektori(); drawSkyline(); drawGround(); drawRoad();
+  const list = [];
+  collectProps(list);
+  for (const o of S.objs) { const z = o.z - S.dist; if (z >= -2.5 && z <= 84) list.push({ k:'obj', z, o }); }
+  list.push({ k:'igrac', z:0 });
+  list.sort((a, b) => b.z - a.z);
+  for (const it of list) {
+    switch (it.k) {
+      case 'drvo': drvo(it); break; case 'stub': stub(it); break; case 'zica': zica(it); break;
+      case 'kuca': kuca(it); break; case 'znak': znak(it); break; case 'luk': luk(it); break;
+      case 'obj': drawObj(it.o, it.z); break; case 'igrac': crtajIgraca(); break;
+    }
+  }
+  drawFx();
+  ctx.restore();
+}
+
+// ---------- HUD i meniji ----------
+const hudEl = $('hud'), strelice = $('strelice');
+const H_ = { poeni:$('poeni'), mn:$('mnozilac'), metri:$('metri'), etapa:$('etapa'), sled:$('sledeca'), dosl:$('dosledece'), puni:$('rutaPuni') };
+let lastHud = {};
+function setT(node, key, val) { if (lastHud[key] !== val) { lastHud[key] = val; node.textContent = val; } }
+function updateHud() {
+  setT(H_.poeni, 'p', fmt(S.score));
+  const m = mnozilac();
+  if (lastHud.m !== m) { lastHud.m = m; H_.mn.textContent = '×' + m; H_.mn.classList.toggle('vruce', m > 1); }
+  setT(H_.metri, 'd', fmt(Math.floor(S.dist)) + ' m · ' + fmt(S.evri || 0) + ' €');
+  const st = ETAPE[S.stage], nx = ETAPE[S.stage + 1];
+  setT(H_.etapa, 'e', st.kratko);
+  if (nx) { setT(H_.sled, 'n', nx.kratko); setT(H_.dosl, 'dd', 'još ' + fmt(Math.ceil(nx.m - S.dist)) + ' m'); }
+  else { setT(H_.sled, 'n', 'Svetska turneja'); setT(H_.dosl, 'dd', 'bis!'); }
+  const w = (Math.min(1, S.dist / CILJ) * 100).toFixed(1) + '%';
+  if (lastHud.w !== w) { lastHud.w = w; H_.puni.style.width = w; }
+}
+const tackeEl = $('rutaTacke');
+ETAPE.forEach(e => { const d = document.createElement('span'); d.className = 'tacka'; d.style.left = (e.m / CILJ * 100) + '%'; d.title = e.ime; tackeEl.appendChild(d); });
+function osveziTacke() { Array.from(tackeEl.children).forEach((d, i) => d.classList.toggle('prosla', i <= S.stage)); }
+
+const poruka = $('poruka'), porukaMala = $('porukaMala'), porukaVelika = $('porukaVelika');
+function baner(naslov, mali, ljubav) {
+  porukaMala.textContent = mali; porukaVelika.textContent = naslov;
+  poruka.classList.remove('prikazi'); void poruka.offsetWidth;
+  poruka.classList.toggle('ljubav', !!ljubav); poruka.classList.add('prikazi');
+}
+function rekordTekst() {
+  return rekord.poeni > 0 ? 'Rekord: <b>' + fmt(rekord.poeni) + '</b> poena · najdalje <b>' + fmt(rekord.metri) + ' m</b>' : 'Još nema rekorda';
+}
+const meniStart = $('meniStart'), meniKraj = $('meniKraj'), meniPauza = $('meniPauza');
+function reset() {
+  Object.assign(S, {
+    dist:0, speed:10, ph:0, lane:0, px:0, jy:0, vy:0, air:false, inv:0, shake:0, drunk:0, stumble:0,
+    score:0, combo:0, comboT:0, objs:[], fx:[], next:30, stage:0, loveT:0, heartT:0, divaO:null, sputan:0, zikaPoslednji:-1000, evri:0,
+    counts:{ pevacica:0, rakija:0, mikrofon:0, truba:0, harmonika:0, nota:0, bend:0, zika:0 }
+  });
+  if (S.skyCur !== 'selo') { S.skyPrev = S.skyCur; S.skyCur = 'selo'; S.skyFade = 0; }
+  lastHud = {}; osveziTacke(); korak = 0;
+}
+function kreni() {
+  if (S.mode === 'play' || S.mode === 'love' || S.mode === 'pause') return;
+  initAudio(); reset();
+  S.mode = 'play';
+  meniStart.hidden = true; meniKraj.hidden = true; hudEl.hidden = false; strelice.hidden = false;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  baner('Rodno selo', 'Kreće turneja', false);
+}
+function zavrsi() {
+  S.mode = 'over';
+  const metri = Math.floor(S.dist), novi = S.score > rekord.poeni && S.score > 0;
+  if (novi) rekord.poeni = S.score;
+  if (metri > rekord.metri) rekord.metri = metri;
+  sacuvaj();
+  $('krajPoeni').textContent = fmt(S.score); $('krajMetri').textContent = fmt(metri) + ' m';
+  $('kPevacica').textContent = S.counts.pevacica; $('kRakija').textContent = S.counts.rakija; $('kMikrofon').textContent = S.counts.mikrofon;
+  $('kTruba').textContent = S.counts.truba; $('kHarmonika').textContent = S.counts.harmonika; $('kNota').textContent = fmt(S.evri) + ' €';
+  const nx = ETAPE[S.stage + 1];
+  let t = 'Verica ga je začarala i vratila u rodno selo.';
+  if (S.stage > 0 && nx) t = 'Najdalje je stigao: ' + ETAPE[S.stage].ime + '. ' + t;
+  if (nx) t += ' Do sledeće stanice (' + nx.kratko + ') falilo je još ' + fmt(nx.m - metri) + ' m.';
+  else t = 'Stigao je do poslednje stanice i pevao na bis, ali ga je Verica ipak začarala i vratila u rodno selo.';
+  const nb = S.counts.bend;
+  if (nb > 0) t += ' Bend ga je zaustavio ' + (nb === 1 ? 'jednom' : nb + ' puta') + '.';
+  const nz = S.counts.zika;
+  if (nz > 0) t += ' Žika Spanac ga je sputao ' + (nz === 1 ? 'jednom' : nz + ' puta') + '.';
+  $('krajTekst').textContent = t;
+  $('noviRekord').hidden = !novi;
+  $('rekordKraj').innerHTML = rekordTekst(); $('rekordStart').innerHTML = rekordTekst();
+  hudEl.hidden = true; strelice.hidden = true; meniKraj.hidden = false;
+  const b = $('dugmePonovo'); if (b.focus) b.focus({ preventScroll:true });
+}
+function pauza() {
+  if (S.mode !== 'play') return;
+  S.mode = 'pause'; meniPauza.hidden = false;
+  const b = $('dugmeNastavi'); if (b.focus) b.focus({ preventScroll:true });
+}
+function nastavi() {
+  if (S.mode !== 'pause') return;
+  S.mode = 'play'; meniPauza.hidden = true; last = performance.now();
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+function pomeri(dir) { if (S.mode !== 'play' || S.sputan > 0) return; const n = clamp(S.lane + dir, -1, 1); if (n !== S.lane) { S.lane = n; sfxTraka(); } }
+function skoci() { if (S.mode !== 'play' || S.air || S.sputan > 0) return; S.air = true; S.vy = SKOK; sfxSkok(); }
+function spusti() { if (S.mode === 'play' && S.air) S.vy = Math.min(S.vy, -10); }
+
+// tastatura
+addEventListener('keydown', e => {
+  const k = e.key;
+  if (S.mode === 'play') {
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { pomeri(-1); e.preventDefault(); }
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') { pomeri(1); e.preventDefault(); }
+    else if (k === 'ArrowUp' || k === 'w' || k === 'W' || k === ' ') { skoci(); e.preventDefault(); }
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') { spusti(); e.preventDefault(); }
+    else if (k === 'p' || k === 'P' || k === 'Escape') { pauza(); e.preventDefault(); }
+  } else if (S.mode === 'pause') {
+    if (k === 'p' || k === 'P' || k === 'Escape' || k === 'Enter' || k === ' ') { nastavi(); e.preventDefault(); }
+  } else if (S.mode === 'menu' || S.mode === 'over') {
+    if (k === 'Enter' || k === ' ') { e.preventDefault(); kreni(); }
+  }
+});
+
+// dodir: leva/desna strana ekrana, prevlačenje, dugmad
+let dodir = null;
+scena.addEventListener('pointerdown', e => {
+  if (S.mode !== 'play') return;
+  if (e.target.closest && e.target.closest('button, .meni')) return;
+  dodir = { x:e.clientX, y:e.clientY, t:performance.now(), akcija:false, id:e.pointerId };
+});
+scena.addEventListener('pointermove', e => {
+  if (!dodir || e.pointerId !== dodir.id) return;
+  const dx = e.clientX - dodir.x, dy = e.clientY - dodir.y, prag = 26;
+  if (Math.abs(dx) > prag && Math.abs(dx) > Math.abs(dy)) { pomeri(dx > 0 ? 1 : -1); dodir.akcija = true; dodir.x = e.clientX; dodir.y = e.clientY; }
+  else if (Math.abs(dy) > prag * 1.3 && Math.abs(dy) > Math.abs(dx)) { if (dy < 0) skoci(); else spusti(); dodir.akcija = true; dodir.x = e.clientX; dodir.y = e.clientY; }
+});
+scena.addEventListener('pointerup', e => {
+  if (!dodir || e.pointerId !== dodir.id) return;
+  if (!dodir.akcija && performance.now() - dodir.t < 400) {
+    const r = scena.getBoundingClientRect();
+    pomeri(e.clientX - r.left < r.width / 2 ? -1 : 1);
+  }
+  dodir = null;
+});
+scena.addEventListener('pointercancel', () => { dodir = null; });
+$('dugmeLevo').addEventListener('pointerdown', e => { e.preventDefault(); pomeri(-1); });
+$('dugmeDesno').addEventListener('pointerdown', e => { e.preventDefault(); pomeri(1); });
+$('dugmeLevo').addEventListener('click', e => e.currentTarget.blur());
+$('dugmeDesno').addEventListener('click', e => e.currentTarget.blur());
+
+$('dugmeStart').addEventListener('click', kreni);
+$('dugmePonovo').addEventListener('click', kreni);
+$('dugmeNastavi').addEventListener('click', nastavi);
+$('dugmePauza').addEventListener('click', e => { pauza(); e.currentTarget.blur(); });
+const dugmeZvuk = $('dugmeZvuk');
+function osveziZvukDugme() { dugmeZvuk.classList.toggle('ugaseno', !zvukUkljucen); dugmeZvuk.setAttribute('aria-label', zvukUkljucen ? 'Isključi zvuk' : 'Uključi zvuk'); }
+dugmeZvuk.addEventListener('click', e => {
+  zvukUkljucen = !zvukUkljucen;
+  try { localStorage.setItem('lazaSpanac.zvuk', zvukUkljucen ? '1' : '0'); } catch (err) {}
+  if (master) master.gain.value = zvukUkljucen ? 0.9 : 0;
+  initAudio(); osveziZvukDugme(); e.currentTarget.blur();
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauza(); });
+
+// ---------- zvuk ----------
+let AC = null, master = null, musicBus = null, sfxBus = null, noiseBuf = null;
+let nextT = 0, korak = 0;
+function initAudio() {
+  try {
+    if (!AC) {
+      const A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+      AC = new A();
+      master = AC.createGain(); master.gain.value = zvukUkljucen ? 0.9 : 0; master.connect(AC.destination);
+      musicBus = AC.createGain(); musicBus.gain.value = 0.3; musicBus.connect(master);
+      sfxBus = AC.createGain(); sfxBus.gain.value = 0.5; sfxBus.connect(master);
+      noiseBuf = AC.createBuffer(1, Math.floor(AC.sampleRate * 0.5), AC.sampleRate);
+      const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      setInterval(sched, 25);
+    }
+    if (AC.state === 'suspended') AC.resume();
+  } catch (e) {}
+}
+function oscT(t0, type, f0, f1, dur, vol, lp, bus) {
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t0);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  let node = o;
+  if (lp) { const f = AC.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = lp; o.connect(f); node = f; }
+  node.connect(g); g.connect(bus || sfxBus); o.start(t0); o.stop(t0 + dur + 0.03);
+}
+function sumT(t0, dur, vol, tip, fq, bus) {
+  const src = AC.createBufferSource(); src.buffer = noiseBuf;
+  const f = AC.createBiquadFilter(); f.type = tip; f.frequency.value = fq;
+  const g = AC.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(f); f.connect(g); g.connect(bus || sfxBus); src.start(t0); src.stop(t0 + dur + 0.02);
+}
+const ok = () => AC && zvukUkljucen && AC.state === 'running';
+function osc(type, f0, f1, dur, vol, at, lp) { if (ok()) oscT(AC.currentTime + (at || 0), type, f0, f1, dur, vol, lp); }
+function sum(dur, vol, at, tip, fq) { if (ok()) sumT(AC.currentTime + (at || 0), dur, vol, tip, fq); }
+const PENTA = [880, 987.77, 1174.66, 1318.51, 1567.98];
+function sfxNota() { const f = PENTA[S.combo % 5]; osc('sine', f, f, 0.12, 0.16); osc('sine', f * 2, f * 2, 0.08, 0.04); }
+function sfxRakija() { osc('sine', 300, 120, 0.12, 0.3); osc('sine', 260, 110, 0.12, 0.25, 0.1); osc('sine', 2600, 2600, 0.15, 0.06, 0.02); osc('sine', 3900, 3900, 0.12, 0.03, 0.02); }
+function sfxMikrofon() { osc('triangle', 660, 1320, 0.18, 0.2); }
+function sfxTruba() { [523.25, 659.25, 783.99].forEach((f, i) => osc('sawtooth', f, f, 0.1, 0.1, i * 0.08, 1800)); }
+function sfxHarmonika() { [440, 523.25, 659.25].forEach(f => { osc('sawtooth', f, f, 0.3, 0.06, 0, 2200); osc('sawtooth', f * 1.004, f * 1.004, 0.3, 0.05, 0, 2200); }); }
+function sfxPevacica() { osc('triangle', 659.25, 659.25, 0.12, 0.22); osc('triangle', 880, 880, 0.22, 0.22, 0.11); osc('sine', 1760, 1760, 0.2, 0.05, 0.11); }
+function sfxPrepreka() { sum(0.2, 0.45, 0, 'lowpass', 500); osc('sine', 90, 40, 0.22, 0.4); }
+function sfxSkok() { osc('sine', 300, 620, 0.1, 0.07); }
+function sfxPara() { osc('square', 1318.5, 1318.5, 0.06, 0.05, 0, 3000); osc('square', 1760, 1760, 0.25, 0.05, 0.07, 3000); osc('sine', 2637, 2637, 0.3, 0.04, 0.07); }
+function sfxZika() { osc('sawtooth', 120, 60, 0.7, 0.14, 0, 600); sum(0.3, 0.3, 0, 'lowpass', 300); }
+function sfxUpozorenje() { osc('square', 196, 196, 0.22, 0.06, 0, 900); osc('square', 147, 147, 0.32, 0.06, 0.25, 900); }
+function sfxBend() { osc('square', 440, 440, 0.1, 0.07, 0, 1500); osc('square', 330, 330, 0.18, 0.07, 0.12, 1500); }
+function sfxTraka() { sum(0.06, 0.05, 0, 'bandpass', 1800); }
+function sfxEtapa() { [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => osc('triangle', f, f, 0.16, 0.16, i * 0.09)); }
+function sfxDiva() { [392, 370, 349.23].forEach((f, i) => osc('sawtooth', f, f * 0.98, 0.32, 0.1, i * 0.36, 1400)); osc('sawtooth', 330, 280, 0.9, 0.1, 1.08, 1200); }
+// muzika: kolo u 7/8 (3+2+2), harmonski mol
+const NOTE = { E4:329.63, F4:349.23, 'G#4':415.3, A4:440, B4:493.88, C5:523.25, D5:587.33, E5:659.25, F5:698.46 };
+const MEL = ['A4','C5','E5','D5','C5','B4','C5', 'D5','E5','F5','E5','D5','C5','B4', 'A4','B4','C5','B4','A4','G#4','A4', 'B4','C5','D5','C5','B4','A4',null];
+const BAS = [[110, 164.81, 220], [146.83, 220, 293.66], [110, 164.81, 220], [82.41, 123.47, 164.81]];
+const stepDur = () => 0.15 - 0.025 * clamp((S.speed - 14) / 18, 0, 1);
+function harm(t0, f, dur) {
+  const g = AC.createGain(), lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2200;
+  lp.connect(g); g.connect(musicBus);
+  for (const d of [-8, 8]) { const o = AC.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = d; o.connect(lp); o.start(t0); o.stop(t0 + dur + 0.03); }
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.11, t0 + 0.012); g.gain.setValueAtTime(0.11, t0 + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+}
+function playStep(n, t) {
+  const bar = Math.floor(n / 7) % 4, s = n % 7, st = stepDur();
+  const mel = MEL[n % MEL.length]; if (mel) harm(t, NOTE[mel], st * 0.92);
+  if (s === 0 || s === 3 || s === 5) oscT(t, 'triangle', BAS[bar][s === 0 ? 0 : s === 3 ? 1 : 2], 0, st * 1.6, 0.3, 0, musicBus);
+  if (s === 0) oscT(t, 'sine', 150, 45, 0.16, 0.55, 0, musicBus);
+  else if (s === 3 || s === 5) { oscT(t, 'sine', 110, 70, 0.12, 0.3, 0, musicBus); sumT(t, 0.06, 0.1, 'lowpass', 1200, musicBus); }
+  else sumT(t, 0.035, 0.05, 'highpass', 7000, musicBus);
+}
+function sched() {
+  if (!AC) return;
+  if (S.mode !== 'play' || !zvukUkljucen || AC.state !== 'running') { nextT = 0; return; }
+  if (nextT < AC.currentTime) nextT = AC.currentTime + 0.05;
+  while (nextT < AC.currentTime + 0.12) { playStep(korak, nextT); nextT += stepDur(); korak = (korak + 1) % 28; }
+}
+
+// ---------- ikonice u menijima ----------
+const IKONA_PEV = { kosa:'#f1d27a', haljina:'#23b3a0', koza:'#f2c6a2', cipele:'#f4b73b', seed:0.6, ime:'' };
+function crtajIkonu(c) {
+  const tip = c.dataset.ik, css = parseFloat(c.dataset.v || '48'), d = Math.min(window.devicePixelRatio || 1, 2);
+  c.style.width = css + 'px'; c.style.height = css + 'px';
+  c.width = Math.round(css * d); c.height = Math.round(css * d);
+  const q = c.getContext('2d'); q.setTransform(d, 0, 0, d, 0, 0); q.clearRect(0, 0, css, css);
+  const prev = ctx; ctx = q;
+  const u = css / 48;
+  if (tip === 'pevacica') pevacica(IKONA_PEV, 24 * u, 46 * u, 0.37 * u, 0.4);
+  else if (tip === 'diva') diva({ seed:0.3 }, 24 * u, 46 * u, 0.3 * u, 0.4);
+  else if (tip === 'bala') bala(24 * u, 38 * u, 0.5 * u);
+  else if (tip === 'zvucnik') zvucnik(24 * u, 45 * u, 0.32 * u);
+  else if (tip === 'bend') muzicar(BEND.vasa, 24 * u, 46 * u, 0.33 * u, 0.4, 'stop');
+  else if (tip === 'zika') zika(24 * u, 47 * u, 0.18 * u, 0.4);
+  else predmet(tip, 24 * u, 24 * u, 0.85 * u, 0, 0, 500);
+  ctx = prev;
+}
+function crtajIkone() { document.querySelectorAll('canvas[data-ik]').forEach(crtajIkonu); }
+
+// ---------- start ----------
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+  if (S.mode !== 'pause') update(dt);
+  render();
+  if (S.mode === 'play' || S.mode === 'love') updateHud();
+  requestAnimationFrame(loop);
+}
+function init() {
+  resize(); crtajIkone(); osveziZvukDugme(); osveziTacke();
+  $('rekordStart').innerHTML = rekordTekst();
+  if (window.ResizeObserver) new ResizeObserver(() => resize()).observe(scena); else addEventListener('resize', resize);
+  if (document.fonts && document.fonts.load) document.fonts.load('16px Bungee').catch(() => {});
+  requestAnimationFrame(t => { last = t; loop(t); });
+}
+const hot = window.claude && window.claude.hot;
+try { if (hot && hot.snapshot) hot.snapshot(() => ({ rekord })); } catch (e) {}
+function boot(data) { if (data && data.rekord && data.rekord.poeni > rekord.poeni) rekord = data.rekord; init(); }
+if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+
+</body>
+</html>
